@@ -16,7 +16,7 @@ public class UniProtApplication extends Application<UniProtConfiguration> {
     @Override
     public void run(UniProtConfiguration configuration, Environment environment) throws Exception {
 
-        environment.jersey().register(new Isoforms());
+        environment.jersey().register(new Isoforms(configuration));
 
     }
 

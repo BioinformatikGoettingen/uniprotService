@@ -7,6 +7,8 @@
 #    type: http
 #    port: 8080
 
+dataDir: data
+
 server:
 #  softNofileLimit: 1000
 #  hardNofileLimit: 1000
