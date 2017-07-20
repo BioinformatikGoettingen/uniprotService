@@ -34,6 +34,7 @@ import org.xml.sax.SAXException;
 public class Isoforms {
 
     private final UniProtConfiguration configuration;
+    private Document document;
 
     Isoforms(UniProtConfiguration configuration) {
         this.configuration = configuration;
@@ -41,28 +42,52 @@ public class Isoforms {
 
     @GET
     @Path("/isoforms/{uniprotID}")
-    public List<String> getIsoforms(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+    public List<Isoform> getIsoforms(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
 
-        File rdfFile = getRDFfile(uniprotID);
-
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(rdfFile);
-      
+        document = null;
+        Document doc = getDocument(uniprotID);
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description[1]/sequence");
         NodeList result = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
 
-        List<String> out = new ArrayList();
+        List<Isoform> out = new ArrayList();
         for (int i = 0; i < result.getLength(); i++) {
+            Isoform isoform = new Isoform();
             Node node = result.item(i);
             String resource = node.getAttributes().getNamedItem("rdf:resource").getNodeValue();
-            out.add(resource.substring(resource.lastIndexOf("/")+1));
+            isoform.setId(resource.substring(resource.lastIndexOf("/") + 1));
+            isoform.setUrl(resource);
+            isoform.setNames(getNameOfIsoform(uniprotID, resource));
+            out.add(isoform);
         }
         return out;
     }
-    
+
+    private Document getDocument(String uniprotID) throws IOException, SAXException, ParserConfigurationException {
+        if (document == null) {
+            File rdfFile = getRDFfile(uniprotID);
+
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            document = builder.parse(rdfFile);
+        }
+        return document;
+    }
+
+    private List<String> getNameOfIsoform(String uniprotID, String isoform) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
+        Document doc = getDocument(uniprotID);
+        XPathFactory xPathfactory = XPathFactory.newInstance();
+        XPath xpath = xPathfactory.newXPath();
+        XPathExpression expr = xpath.compile("/RDF/Description[@about='"+isoform+"']/name/text()");
+        NodeList result = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < result.getLength(); i++){
+            out.add(result.item(i).getNodeValue());
+        }
+        return out;
+    }
+
     private File getRDFfile(String id) throws MalformedURLException, IOException {
 
         File localFile = getLocalRDFfile(id);
@@ -85,5 +110,37 @@ public class Isoforms {
         File dataDir = new File(configuration.getDataDir());
         File file = new File(dataDir, id + ".rdf");
         return file;
+    }
+
+
+    class Isoform{
+        String id;
+        String url;
+        List<String> names;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public List<String> getNames() {
+            return names;
+        }
+
+        public void setNames(List<String> names) {
+            this.names = names;
+        }
+        
     }
 }
