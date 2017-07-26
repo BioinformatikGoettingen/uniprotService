@@ -32,25 +32,25 @@ import org.xml.sax.SAXException;
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
 public class Isoforms {
-
+    
     private final UniProtConfiguration configuration;
     private Document document;
-
+    
     Isoforms(UniProtConfiguration configuration) {
         this.configuration = configuration;
     }
-
+    
     @GET
     @Path("/isoforms/{uniprotID}")
     public List<Isoform> getIsoforms(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
-
+        
         document = null;
         Document doc = getDocument(uniprotID);
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description[1]/sequence");
         NodeList result = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
-
+        
         List<Isoform> out = new ArrayList();
         for (int i = 0; i < result.getLength(); i++) {
             Isoform isoform = new Isoform();
@@ -59,37 +59,51 @@ public class Isoforms {
             isoform.setId(resource.substring(resource.lastIndexOf("/") + 1));
             isoform.setUrl(resource);
             isoform.setNames(getNameOfIsoform(uniprotID, resource));
+            isoform.setSequence(getSequenceOfIsoform(uniprotID, resource));
             out.add(isoform);
         }
         return out;
     }
-
+    
     private Document getDocument(String uniprotID) throws IOException, SAXException, ParserConfigurationException {
         if (document == null) {
             File rdfFile = getRDFfile(uniprotID);
-
+            
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             document = builder.parse(rdfFile);
         }
         return document;
     }
-
+    
     private List<String> getNameOfIsoform(String uniprotID, String isoform) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
         Document doc = getDocument(uniprotID);
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
-        XPathExpression expr = xpath.compile("/RDF/Description[@about='"+isoform+"']/name/text()");
+        XPathExpression expr = xpath.compile("/RDF/Description[@about='" + isoform + "']/name/text()");
         NodeList result = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
         List<String> out = new ArrayList<>();
-        for (int i = 0; i < result.getLength(); i++){
+        for (int i = 0; i < result.getLength(); i++) {
             out.add(result.item(i).getNodeValue());
         }
         return out;
     }
+    
+    private String getSequenceOfIsoform(String uniprotID, String isoform) throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
+        Document doc = getDocument(uniprotID);
+        XPathFactory xPathfactory = XPathFactory.newInstance();
+        XPath xpath = xPathfactory.newXPath();
+        XPathExpression expr = xpath.compile("/RDF/Description[@about='" + isoform + "']/value/text()");
+        NodeList result = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < result.getLength(); i++) {
+            out.add(result.item(i).getNodeValue());
+        }
+        return out.get(0);
+    }
 
     private File getRDFfile(String id) throws MalformedURLException, IOException {
-
+        
         File localFile = getLocalRDFfile(id);
         if (localFile == null) {
             FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
@@ -97,7 +111,7 @@ public class Isoforms {
         }
         return getLocalRDFfile(id);
     }
-
+    
     private File getLocalRDFfile(String id) {
         File file = getLocalFile(id);
         if (file.canRead()) {
@@ -105,39 +119,48 @@ public class Isoforms {
         }
         return null;
     }
-
+    
     private File getLocalFile(String id) {
         File dataDir = new File(configuration.getDataDir());
         File file = new File(dataDir, id + ".rdf");
         return file;
     }
+    
+    class Isoform {
 
-
-    class Isoform{
         String id;
         String url;
         List<String> names;
+        String sequence;
 
+        public String getSequence() {
+            return sequence;
+        }
+
+        public void setSequence(String sequence) {
+            this.sequence = sequence;
+        }
+        
         public String getId() {
             return id;
         }
-
+        
         public void setId(String id) {
             this.id = id;
         }
-
+        
         public String getUrl() {
             return url;
         }
-
+        
         public void setUrl(String url) {
             this.url = url;
         }
-
+        
         public List<String> getNames() {
             return names;
         }
-
+        
         public void setNames(List<String> names) {
             this.names = names;
         }
