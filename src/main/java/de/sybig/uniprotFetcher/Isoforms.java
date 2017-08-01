@@ -51,6 +51,28 @@ public class Isoforms {
         return isoforms;
     }
 
+    @GET
+    @Path("/isoforms/alignmentPos/{uniprotID}")
+    public Object getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+        List<Isoform> isoforms = getIsoforms(uniprotID);
+        ArrayList<AlignedSequence> sequences = new ArrayList<>();
+        for (Isoform isoform : isoforms) {
+            sequences.add(new AlignedSequence(isoform.getSequence(), isoform.getId()));
+        }
+        for (Isoform isoform : isoforms){
+            if (isoform.getModifications() == null){
+                continue;
+            }
+            for (Modification m : isoform.getModifications()){
+                for (AlignedSequence as : sequences){
+                    as.apply(m, isoform.getId());
+                }
+//                break;
+            }
+        }
+        return sequences;
+    }
+
     private Document getDocument(String uniprotID) throws IOException, SAXException, ParserConfigurationException {
 
         File rdfFile = getRDFfile(uniprotID);
@@ -140,7 +162,7 @@ public class Isoforms {
         NodeList children = node.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
-             if ("faldo:begin".equals(child.getNodeName())) {
+            if ("faldo:begin".equals(child.getNodeName())) {
                 modification.setBegin(getPos(child.getAttributes().getNamedItem("rdf:resource").getNodeValue(), doc));
             }
             if ("faldo:end".equals(child.getNodeName())) {
@@ -156,7 +178,7 @@ public class Isoforms {
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description[@about='" + uri + "']/position");
         Node node = (Node) expr.evaluate(doc, XPathConstants.NODE);
-        if (node == null){
+        if (node == null) {
             return 0;
         }
         return Integer.parseInt(node.getTextContent());
@@ -272,7 +294,7 @@ public class Isoforms {
         }
 
         public int getEnd() {
-            return end;
+            return end +1;
         }
 
         public void setEnd(int end) {
