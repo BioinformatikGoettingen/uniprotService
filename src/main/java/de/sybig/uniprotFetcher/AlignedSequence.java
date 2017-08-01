@@ -28,7 +28,7 @@ public class AlignedSequence {
         if ((m.getEnd() - m.getBegin()) > m.getSubstitution().length()) {
             applyDeletion(m, id);
         } else {
-            System.out.println("Insertion " + id  + " " +m.getBegin());
+            System.out.println("Insertion " + id + " " + m.getBegin());
             applyInsertion(m, id);
         }
 
@@ -38,33 +38,30 @@ public class AlignedSequence {
         if (this.id != id) {
             return;
         }
-        int movedStart =0;
-        for (SequenceFeature sf : features){
-            if ("gap".equals(sf.getType()) && sf.getStart() < m.getBegin()){
+        int movedStart = 0;
+        for (SequenceFeature sf : features) {
+            if ("gap".equals(sf.getType()) && sf.getStart() < m.getBegin()) {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
-        System.out.println("moved start " +movedStart + " for "+ id);
-            
+
         if (m.getSubstitution() != null && m.getSubstitution().length() > 0) {
             SequenceFeature substitution = new SequenceFeature();
             substitution.setStart(m.getBegin() + movedStart);
-            substitution.setEnd(m.getBegin()+ movedStart + m.getSubstitution().length());
+            substitution.setEnd(m.getBegin() + movedStart + m.getSubstitution().length());
             substitution.setType("mismatch");
             addFeature(substitution);
         }
         int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
         SequenceFeature gap = new SequenceFeature();
-        gap.setStart(m.getBegin()+ movedStart + sub);
-        gap.setEnd(m.getEnd()+ movedStart);
+        gap.setStart(m.getBegin() + movedStart + sub);
+        gap.setEnd(m.getEnd() + movedStart);
         gap.setType("gap");
-        
-        System.out.println("seq " + sequence);
-        sequence = sequence.substring(0 , (m.getBegin() +  sub-1))+
-                String.join("", Collections.nCopies(gap.getEnd()-gap.getStart(), "-")) +
-                sequence.substring(gap.getStart()-1 - movedStart , sequence.length());
- 
-      
+
+        sequence = sequence.substring(0, (m.getBegin() + sub - 1))
+                + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
+                + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
+
         addFeature(gap);
     }
 
@@ -72,6 +69,24 @@ public class AlignedSequence {
         if (this.id == id) {
             return;
         }
+
+        int movedStart = 0;
+        for (SequenceFeature sf : features) {
+            if ("gap".equals(sf.getType()) && sf.getStart() < m.getBegin()) {
+                movedStart = movedStart + sf.getEnd() - sf.getStart();
+            }
+        }
+        int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
+        SequenceFeature gap = new SequenceFeature();
+        gap.setStart(m.getBegin() + movedStart);
+        gap.setEnd(m.getBegin() + sub + movedStart);
+        gap.setType("gap");
+        addFeature(gap);
+
+        sequence = sequence.substring(0, (m.getBegin() - 1))
+                + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
+                + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
+
     }
 
     public String getType() {
