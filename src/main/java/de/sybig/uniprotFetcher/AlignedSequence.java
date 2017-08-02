@@ -57,17 +57,17 @@ public class AlignedSequence {
         gap.setStart(m.getBegin() + movedStart + sub);
         gap.setEnd(m.getEnd() + movedStart);
         gap.setType("gapD");
-
+        System.out.println(id + " changing sequnce from " + sequence.length());
         sequence = sequence.substring(0, (m.getBegin() + sub - 1))
                 + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
                 + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
-
+        System.out.println(" to " + sequence.length());
         addFeature(gap);
     }
 
     private void applyInsertion(Isoforms.Modification modToApply, Isoform isoform) {
-        
-        System.out.println("working on " + getId());
+
+        //  System.out.println("working on " + getId());
         int movedStart = 0;
         for (SequenceFeature sf : features) {
             if ("gap".equals(sf.getType()) && sf.getStart() < modToApply.getBegin()) {
@@ -75,7 +75,8 @@ public class AlignedSequence {
             }
         }
         if (this.id == isoform.getId()) {
-            if (modToApply.getSubstitution() != null) {
+            if (modToApply.getSubstitution() != null
+                    && modToApply.getSubstitution().length() <= (modToApply.getEnd() - modToApply.getBegin())) {
                 SequenceFeature mismatch = new SequenceFeature();
                 mismatch.setStart(modToApply.getBegin() + movedStart);
                 mismatch.setEnd(modToApply.getBegin() + modToApply.getSubstitution().length() + movedStart);
@@ -84,7 +85,6 @@ public class AlignedSequence {
             }
             return;
         }
-        
 
         /// search overlapping gaps in canonical sequence
         for (SequenceFeature sf : features) {  //TODO consider moved start
@@ -107,20 +107,26 @@ public class AlignedSequence {
 //                 return;
 //             }
 //        }
-        System.out.println("inserting gap in " + getId());
+        //System.out.println("inserting gap in " + modToApply);
 
         int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
+        if (sub > modToApply.getEnd() - modToApply.getBegin()) {
 
-        SequenceFeature gap = new SequenceFeature();
-        gap.setStart(modToApply.getBegin() + movedStart + sub);
-        gap.setEnd(modToApply.getEnd()  + movedStart + sub);
-        gap.setType("gapI");
-        addFeature(gap);
-
-        sequence = sequence.substring(0, (modToApply.getBegin() - 1))
+            SequenceFeature gap = new SequenceFeature();
+            gap.setStart(modToApply.getBegin() + movedStart);
+            gap.setEnd(modToApply.getEnd() + movedStart + sub);
+            gap.setType("gapI");
+            addFeature(gap);
+            System.out.println(id + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
+            
+             sequence = sequence.substring(0, (modToApply.getBegin() - 1))
                 + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
                 + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
 
+        }
+        
+
+       
     }
 
     public String getType() {
