@@ -1,5 +1,6 @@
 package de.sybig.uniprotFetcher;
 
+import de.sybig.uniprotFetcher.Isoforms.Isoform;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -24,17 +25,17 @@ public class AlignedSequence {
         addFeature(sf);
     }
 
-    void apply(Isoforms.Modification m, String id) {
+    void applyModification(Isoforms.Modification m, Isoform isoform) {
         if ((m.getEnd() - m.getBegin()) > m.getSubstitution().length()) {
-            applyDeletion(m, id);
+            applyDeletion(m, isoform);
         } else {
-            applyInsertion(m, id);
+            applyInsertion(m, isoform);
         }
 
     }
 
-    private void applyDeletion(Isoforms.Modification m, String id) {
-        if (this.id != id) {
+    private void applyDeletion(Isoforms.Modification m, Isoform isoform) {
+        if (this.id != isoform.getId()) {
             return;
         }
         int movedStart = 0;
@@ -55,7 +56,7 @@ public class AlignedSequence {
         SequenceFeature gap = new SequenceFeature();
         gap.setStart(m.getBegin() + movedStart + sub);
         gap.setEnd(m.getEnd() + movedStart);
-        gap.setType("gap");
+        gap.setType("gapD");
 
         sequence = sequence.substring(0, (m.getBegin() + sub - 1))
                 + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
@@ -64,47 +65,59 @@ public class AlignedSequence {
         addFeature(gap);
     }
 
-    private void applyInsertion(Isoforms.Modification m, String id) {
-        if (this.id == id) {
-            return;
-        }
+    private void applyInsertion(Isoforms.Modification modToApply, Isoform isoform) {
+        
+        System.out.println("working on " + getId());
         int movedStart = 0;
         for (SequenceFeature sf : features) {
-            if ("gap".equals(sf.getType()) && sf.getStart() < m.getBegin()) {
+            if ("gap".equals(sf.getType()) && sf.getStart() < modToApply.getBegin()) {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
+        if (this.id == isoform.getId()) {
+            if (modToApply.getSubstitution() != null) {
+                SequenceFeature mismatch = new SequenceFeature();
+                mismatch.setStart(modToApply.getBegin() + movedStart);
+                mismatch.setEnd(modToApply.getBegin() + modToApply.getSubstitution().length() + movedStart);
+                mismatch.setType("mismatch");
+                addFeature(mismatch);
+            }
+            return;
+        }
         
-        
-        
-        /// search overlapping gaps
-        for (SequenceFeature sf : features){  //TODO considere moved start
-            System.out.println("testing " +sf.getEnd() + "  -- "+ m.getBegin() + m.getSubstitution().length());
-            if ("gap".equals(sf.getType()) && (m.getBegin() >= (sf.getStart() )) && ((m.getBegin() + m.getSubstitution().length()) <= (sf.getEnd() ))){
-                System.out.println("no new feature");
+
+        /// search overlapping gaps in canonical sequence
+        for (SequenceFeature sf : features) {  //TODO consider moved start
+//            System.out.println("testing " +sf.getEnd() + "  -- "+ modToApply.getBegin() + modToApply.getSubstitution().length());
+            if ("gap".equals(sf.getType()) && (modToApply.getBegin() >= (sf.getStart())) && ((modToApply.getBegin() + modToApply.getSubstitution().length()) <= (sf.getEnd()))) {
+                System.out.println("no new feature " + isoform.getId());
                 return;
             }
-            
-//            if (m.getBegin() < sf.getStart() && m.getEnd() > sf.getStart()){
-//                SequenceFeature gap = new SequenceFeature();
-//                gap.setStart(m.getBegin()+movedStart);
-//                gap.setEnd(sf.getStart());
-//                gap.setType("gap");
-//                addFeature(gap);
-//            }
-                
-        }
-        ///
-        
+            // ToDo overalap at start
+            //ToDo overlap at end
 
-        int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
+        }
+//        /// overlap in modified sequences
+//        String subToApply = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
+//        for (Isoforms.Modification ownModification : isoform.getModifications()){
+//             if (modToApply.getBegin() == ownModification.getBegin()
+//                     && modToApply.getEnd() == ownModification.getEnd()
+//                     && subToApply.equals(ownModification.getSubstitution())){
+//                 System.out.println("i have the same! " + isoform.getId());
+//                 return;
+//             }
+//        }
+        System.out.println("inserting gap in " + getId());
+
+        int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
+
         SequenceFeature gap = new SequenceFeature();
-        gap.setStart(m.getBegin() + movedStart);
-        gap.setEnd(m.getBegin() + sub + movedStart);
-        gap.setType("gap");
+        gap.setStart(modToApply.getBegin() + movedStart + sub);
+        gap.setEnd(modToApply.getEnd()  + movedStart + sub);
+        gap.setType("gapI");
         addFeature(gap);
 
-        sequence = sequence.substring(0, (m.getBegin() - 1))
+        sequence = sequence.substring(0, (modToApply.getBegin() - 1))
                 + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
                 + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
 

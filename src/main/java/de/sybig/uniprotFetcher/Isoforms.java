@@ -53,7 +53,7 @@ public class Isoforms {
 
     @GET
     @Path("/isoforms/alignmentPos/{uniprotID}")
-    public ArrayList<AlignedSequence> getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+    public List<AlignedSequence> getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         List<Isoform> isoforms = getIsoforms(uniprotID);
         ArrayList<AlignedSequence> sequences = new ArrayList<>();
         for (Isoform isoform : isoforms) {
@@ -65,7 +65,7 @@ public class Isoforms {
             }
             for (Modification m : isoform.getModifications()) {
                 for (AlignedSequence as : sequences) {
-                    as.apply(m, isoform.getId());
+                    as.applyModification(m, isoform);
                 }
 //                break;
             }
@@ -78,7 +78,7 @@ public class Isoforms {
     @Produces("image/svg+xml")
     public String getSVG(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         int width = 1000;
-        ArrayList<AlignedSequence> alignment = getAlignmentPos(uniprotID);
+        List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
         double aaSize = ((double) width) / (getMaxSequenceLength(alignment) - 20);
  
 
@@ -97,7 +97,12 @@ public class Isoforms {
                     color = "FFFFFF";
                 } else if ("mismatch".equals(feature.getType())) {
                     color = "CCCCCC";
+                }else if ("gapD".equals(feature.getType())){
+                    color = "FF0000";
+                }else if ("gapI".equals(feature.getType())){
+                    color = "00FF00";
                 }
+                
                 if (color == null) {
                     continue;
                 }
@@ -115,7 +120,7 @@ public class Isoforms {
 
     }
 
-    private int getMaxSequenceLength(ArrayList<AlignedSequence> alignment) {
+    private int getMaxSequenceLength(List<AlignedSequence> alignment) {
         int maxLength = 0;
         for (AlignedSequence sequence : alignment) {
             maxLength = sequence.getSequence().length() > maxLength ? sequence.getSequence().length() : maxLength;
