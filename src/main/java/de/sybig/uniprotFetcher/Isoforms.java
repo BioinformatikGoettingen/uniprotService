@@ -53,24 +53,74 @@ public class Isoforms {
 
     @GET
     @Path("/isoforms/alignmentPos/{uniprotID}")
-    public Object getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+    public ArrayList<AlignedSequence> getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         List<Isoform> isoforms = getIsoforms(uniprotID);
         ArrayList<AlignedSequence> sequences = new ArrayList<>();
         for (Isoform isoform : isoforms) {
             sequences.add(new AlignedSequence(isoform.getSequence(), isoform.getId()));
         }
-        for (Isoform isoform : isoforms){
-            if (isoform.getModifications() == null){
+        for (Isoform isoform : isoforms) {
+            if (isoform.getModifications() == null) {
                 continue;
             }
-            for (Modification m : isoform.getModifications()){
-                for (AlignedSequence as : sequences){
+            for (Modification m : isoform.getModifications()) {
+                for (AlignedSequence as : sequences) {
                     as.apply(m, isoform.getId());
                 }
 //                break;
             }
         }
         return sequences;
+    }
+
+    @GET
+    @Path("/isoforms/svg/{uniprotID}")
+    @Produces("image/svg+xml")
+    public String getSVG(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+        int width = 1000;
+        ArrayList<AlignedSequence> alignment = getAlignmentPos(uniprotID);
+        double aaSize = ((double) width) / (getMaxSequenceLength(alignment) - 20);
+ 
+
+        StringBuilder svg = new StringBuilder();
+        svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n", width));
+        int ypos = 10;
+        for (AlignedSequence sequence : alignment) {
+            svg.append(String.format("<g>\n"
+                    + "  <rect x = \"5\" y = \"%d\" width = \"%d\" height = \"20\" stroke = \"none\" fill = \"#FFBF00\" />\n",
+                    ypos, (int) (aaSize * sequence.getSequence().length())
+            ));
+
+            for (SequenceFeature feature : sequence.getFeatures()) {
+                String color = null;
+                if ("gap".equals(feature.getType())) {
+                    color = "FFFFFF";
+                } else if ("mismatch".equals(feature.getType())) {
+                    color = "CCCCCC";
+                }
+                if (color == null) {
+                    continue;
+                }
+                svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
+                        + "stroke = \"none\" fill = \"#%s\" /> \n", 
+                        (int) (feature.getStart() * aaSize + 5),
+                        ypos + 1, (int) (aaSize * (feature.getEnd() - feature.getStart())), color));
+            }
+            svg.append(String.format("  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"10\" fill=\"blue\">%s</text>\n</g>\n\n",
+                    width - 60, ypos + 15, sequence.getId()));
+            ypos += 25;
+        }
+        svg.append("</svg>");
+        return svg.toString();
+
+    }
+
+    private int getMaxSequenceLength(ArrayList<AlignedSequence> alignment) {
+        int maxLength = 0;
+        for (AlignedSequence sequence : alignment) {
+            maxLength = sequence.getSequence().length() > maxLength ? sequence.getSequence().length() : maxLength;
+        }
+        return maxLength;
     }
 
     private Document getDocument(String uniprotID) throws IOException, SAXException, ParserConfigurationException {
@@ -294,7 +344,7 @@ public class Isoforms {
         }
 
         public int getEnd() {
-            return end +1;
+            return end + 1;
         }
 
         public void setEnd(int end) {

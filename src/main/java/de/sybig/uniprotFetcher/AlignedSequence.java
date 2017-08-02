@@ -28,7 +28,6 @@ public class AlignedSequence {
         if ((m.getEnd() - m.getBegin()) > m.getSubstitution().length()) {
             applyDeletion(m, id);
         } else {
-            System.out.println("Insertion " + id + " " + m.getBegin());
             applyInsertion(m, id);
         }
 
@@ -69,13 +68,35 @@ public class AlignedSequence {
         if (this.id == id) {
             return;
         }
-
         int movedStart = 0;
         for (SequenceFeature sf : features) {
             if ("gap".equals(sf.getType()) && sf.getStart() < m.getBegin()) {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
+        
+        
+        
+        /// search overlapping gaps
+        for (SequenceFeature sf : features){  //TODO considere moved start
+            System.out.println("testing " +sf.getEnd() + "  -- "+ m.getBegin() + m.getSubstitution().length());
+            if ("gap".equals(sf.getType()) && (m.getBegin() >= (sf.getStart() )) && ((m.getBegin() + m.getSubstitution().length()) <= (sf.getEnd() ))){
+                System.out.println("no new feature");
+                return;
+            }
+            
+//            if (m.getBegin() < sf.getStart() && m.getEnd() > sf.getStart()){
+//                SequenceFeature gap = new SequenceFeature();
+//                gap.setStart(m.getBegin()+movedStart);
+//                gap.setEnd(sf.getStart());
+//                gap.setType("gap");
+//                addFeature(gap);
+//            }
+                
+        }
+        ///
+        
+
         int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
         SequenceFeature gap = new SequenceFeature();
         gap.setStart(m.getBegin() + movedStart);
