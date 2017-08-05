@@ -56,6 +56,7 @@ public class Isoforms {
     public List<AlignedSequence> getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         List<Isoform> isoforms = getIsoforms(uniprotID);
         ArrayList<AlignedSequence> sequences = new ArrayList<>();
+        // Init all sequence objects with the sequence as single feature
         for (Isoform isoform : isoforms) {
             sequences.add(new AlignedSequence(isoform.getSequence(), isoform.getId()));
         }
@@ -79,15 +80,38 @@ public class Isoforms {
     public String getSVG(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         int width = 1000;
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
-        double aaSize = ((double) width) / (getMaxSequenceLength(alignment) - 20);
- 
+        double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
+        System.out.println("aa size " + aaSize);
 
         StringBuilder svg = new StringBuilder();
-        svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n", width));
+        svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" onload=\"init(evt)\">\n", width));
+        svg.append("<script type=\"text/ecmascript\">\n"
+                + "<![CDATA[\n"
+                + "  function init(evt)\n"
+                + "  {\n"
+                + "    if ( window.svgDocument == null )\n"
+                + "    {\n"
+                + "      svgDocument = evt.target.ownerDocument;\n"
+                + "    }\n"
+                + "    tooltip = svgDocument.getElementById('tooltip');\n"
+                + "  }\n"
+                + "function ShowTooltip(evt, mouseovertext)\n"
+                + "{\n"
+                + "  tooltip.setAttributeNS(null,\"x\",evt.clientX+11);\n"
+                + "  tooltip.setAttributeNS(null,\"y\",evt.clientY+27);\n"
+                + "  tooltip.firstChild.data = mouseovertext;\n"
+                + "  tooltip.setAttributeNS(null,\"visibility\",\"visible\");\n" 
+                + "}\n"
+                + "\n"
+                + "function HideTooltip()\n"
+                + "{\n"
+                + "  tooltip.setAttributeNS(null,\"visibility\",\"hidden\");\n"
+                + "}"
+                + "]]></script>");
         int ypos = 10;
         for (AlignedSequence sequence : alignment) {
             svg.append(String.format("<g>\n"
-                    + "  <rect x = \"5\" y = \"%d\" width = \"%d\" height = \"20\" stroke = \"none\" fill = \"#FFBF00\" />\n",
+                    + "  <rect x = \"5\" y = \"%d\" width = \"%d\" height = \"20\" stroke = \"none\" fill = \"#FFBF00\"/>\n",
                     ypos, (int) (aaSize * sequence.getSequence().length())
             ));
 
@@ -97,24 +121,29 @@ public class Isoforms {
                     color = "FFFFFF";
                 } else if ("mismatch".equals(feature.getType())) {
                     color = "CCCCCC";
-                }else if ("gapD".equals(feature.getType())){
+                } else if ("gapD".equals(feature.getType())) {
                     color = "FF0000";
-                }else if ("gapI".equals(feature.getType())){
+                } else if ("gapI".equals(feature.getType())) {
                     color = "00FF00";
                 }
-                
+
                 if (color == null) {
                     continue;
                 }
                 svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
-                        + "stroke = \"none\" fill = \"#%s\" /> \n", 
+                        + "stroke = \"none\" fill = \"#%s\" "
+                    + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
+                    + "    onmouseout=\"HideTooltip()\" /> \n",
                         (int) (feature.getStart() * aaSize + 5),
-                        ypos + 1, (int) (aaSize * (feature.getEnd() - feature.getStart())), color));
+                        ypos + 1, (int) (aaSize * (feature.getEnd() - feature.getStart())), color,
+                        feature.getStart() + " - " + feature.getEnd()));
             }
             svg.append(String.format("  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"10\" fill=\"blue\">%s</text>\n</g>\n\n",
                     width - 60, ypos + 15, sequence.getId()));
             ypos += 25;
         }
+        svg.append("<text class=\"tooltip\" id=\"tooltip\"\n"
+                + "      x=\"0\" y=\"0\" visibility=\"hidden\">Tooltip</text>\n");
         svg.append("</svg>");
         return svg.toString();
 
@@ -125,6 +154,7 @@ public class Isoforms {
         for (AlignedSequence sequence : alignment) {
             maxLength = sequence.getSequence().length() > maxLength ? sequence.getSequence().length() : maxLength;
         }
+        System.out.println("max length " + maxLength);
         return maxLength;
     }
 
@@ -214,6 +244,9 @@ public class Isoforms {
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description[@about='" + uri + "']");
         Node node = (Node) expr.evaluate(doc, XPathConstants.NODE);
+        if (node == null) {
+            System.out.println("no range found for " + uri);
+        }
         NodeList children = node.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
