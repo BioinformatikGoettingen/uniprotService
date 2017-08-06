@@ -58,7 +58,7 @@ public class Isoforms {
         ArrayList<AlignedSequence> sequences = new ArrayList<>();
         // Init all sequence objects with the sequence as single feature
         for (Isoform isoform : isoforms) {
-            sequences.add(new AlignedSequence(isoform.getSequence(), isoform.getId()));
+            sequences.add(new AlignedSequence(isoform.getSequence(), isoform));
         }
         for (Isoform isoform : isoforms) {
             if (isoform.getModifications() == null) {
@@ -66,7 +66,7 @@ public class Isoforms {
             }
             for (Modification m : isoform.getModifications()) {
                 for (AlignedSequence as : sequences) {
-                    as.applyModification(m, isoform);
+                    as.applyModification(m, isoform);  // the current modification and the parent isoform
                 }
 //                break;
             }

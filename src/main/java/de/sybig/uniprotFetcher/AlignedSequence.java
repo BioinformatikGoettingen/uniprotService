@@ -12,20 +12,20 @@ import org.slf4j.LoggerFactory;
  * @author juergen.doenitz@bioinf.med.uni-goettingen.de
  */
 public class AlignedSequence {
-    
+
     private Logger logger = LoggerFactory.getLogger(AlignedSequence.class);
 
     private String type = "modified";
     private List<SequenceFeature> features;
-    private String id;
+//    private String id;
     private String sequence;
-    
+
     private transient Isoform parentIsoform;
-    
-    public AlignedSequence(String sequence, String id) {
+
+    public AlignedSequence(String sequence, Isoform parentIsoform) {
         SequenceFeature sf = new SequenceFeature();
-        setSequence(sequence);
-        setId(id);
+        this.sequence = sequence;
+        this.parentIsoform = parentIsoform;
         sf.setStart(1);
         sf.setEnd(sequence.length());
         addFeature(sf);
@@ -41,7 +41,7 @@ public class AlignedSequence {
     }
 
     private void applyDeletion(Isoforms.Modification m, Isoform isoform) {
-        if (this.id != isoform.getId()) {
+        if (getId() != isoform.getId()) {
             return;
         }
         int movedStart = 0;
@@ -80,7 +80,7 @@ public class AlignedSequence {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
-        if (this.id == isoform.getId()) {
+        if (getId() == isoform.getId()) {
             if (modToApply.getSubstitution() != null
                     && modToApply.getSubstitution().length() <= (modToApply.getEnd() - modToApply.getBegin())) {
                 SequenceFeature mismatch = new SequenceFeature();
@@ -95,7 +95,9 @@ public class AlignedSequence {
         /// search overlapping gaps in canonical sequence
         for (SequenceFeature sf : features) {  //TODO consider moved start
 //            System.out.println("testing " +sf.getEnd() + "  -- "+ modToApply.getBegin() + modToApply.getSubstitution().length());
-            if ("gap".equals(sf.getType()) && (modToApply.getBegin() >= (sf.getStart())) && ((modToApply.getBegin() + modToApply.getSubstitution().length()) <= (sf.getEnd()))) {
+            if (sf.getType() != null && sf.getType().startsWith("gap") 
+                    && (modToApply.getBegin() >= (sf.getStart())) 
+                    && ((modToApply.getBegin() + modToApply.getSubstitution().length()) <= (sf.getEnd()))) {
                 System.out.println("no new feature " + isoform.getId());
                 return;
             }
@@ -105,13 +107,15 @@ public class AlignedSequence {
         }
 //        /// overlap in modified sequences
         String subToApply = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
-        for (Isoforms.Modification ownModification : isoform.getModifications()){
-             if (modToApply.getBegin() == ownModification.getBegin()
-                     && modToApply.getEnd() == ownModification.getEnd()
-                     && subToApply.equals(ownModification.getSubstitution())){
-                 logger.info(id + " have the same! " + isoform.getId());
-                 return;
-             }
+        if (parentIsoform.modifications != null) {
+            for (Isoforms.Modification ownModification : parentIsoform.getModifications()) {
+                if (modToApply.getBegin() == ownModification.getBegin()
+                        && modToApply.getEnd() == ownModification.getEnd()
+                        && subToApply.equals(ownModification.getSubstitution())) {
+                    logger.trace("{} has the same modification {} as {}", getId(), modToApply, isoform.getId());
+                    return;
+                }
+            }
         }
         //System.out.println("inserting gap in " + modToApply);
 
@@ -124,10 +128,10 @@ public class AlignedSequence {
             gap.setType("gapI");
             addFeature(gap);
 //            System.out.println(id + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
-            
-             sequence = sequence.substring(0, (modToApply.getBegin() - 1))
-                + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
-                + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
+
+            sequence = sequence.substring(0, (modToApply.getBegin() - 1))
+                    + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() -1 , "-"))
+                    + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
 
         }
     }
@@ -141,11 +145,10 @@ public class AlignedSequence {
     }
 
     public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
+        if (parentIsoform == null) {
+            return null;
+        }
+        return parentIsoform.getId();
     }
 
     public String getSequence() {
