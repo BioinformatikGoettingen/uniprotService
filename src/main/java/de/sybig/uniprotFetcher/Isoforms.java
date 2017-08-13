@@ -81,7 +81,7 @@ public class Isoforms {
         int width = 1000;
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
         double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
-        System.out.println("aa size " + aaSize);
+//        System.out.println("aa size " + aaSize);
 
         StringBuilder svg = new StringBuilder();
         svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" onload=\"init(evt)\">\n", width));
@@ -154,7 +154,7 @@ public class Isoforms {
         for (AlignedSequence sequence : alignment) {
             maxLength = sequence.getSequence().length() > maxLength ? sequence.getSequence().length() : maxLength;
         }
-        System.out.println("max length " + maxLength);
+//        System.out.println("max length " + maxLength);
         return maxLength;
     }
 

@@ -94,8 +94,9 @@ public class AlignedSequence {
         /// search overlapping gaps in canonical sequence
 
         if (checkForSameModificationInThisSequence(modToApply, isoform, movedStart)) {
-            return;
+//            return;
         }
+         checkForEndOverlapsInThisSequence(modToApply, isoform, movedStart);
 //        /// overlap in modified sequences
 
         //System.out.println("inserting gap in " + modToApply);
@@ -104,10 +105,12 @@ public class AlignedSequence {
 
             SequenceFeature gap = new SequenceFeature();
             gap.setStart(modToApply.getBegin() + movedStart);
-            gap.setEnd(modToApply.getEnd() + movedStart + sub);
+            int modToApplyEnd = modToApply.getEnd() + movedStart + sub;
+//            int ownEnd = parentIsoform.
+            gap.setEnd(modToApplyEnd);
             gap.setType("gapI");
-            addFeature(gap);
-//            System.out.println(id + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
+//            addFeature(gap);
+            System.out.println(getId() + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
 
             sequence = sequence.substring(0, (modToApply.getBegin() - 1))
                     + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
@@ -161,20 +164,51 @@ public class AlignedSequence {
         return false;
     }
 
+    @Deprecated
     private boolean checkForSameModificationInThisSequence(Isoforms.Modification modToApply, Isoform isoform, int movedStart) {
         String subToApply = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
-        if (parentIsoform.modifications != null) {
-            for (Isoforms.Modification ownModification : parentIsoform.getModifications()) {
-                if (modToApply.getBegin() == ownModification.getBegin()
-                        && modToApply.getEnd() == ownModification.getEnd()
-                        && subToApply.equals(ownModification.getSubstitution())) {
-                    logger.trace("{} has the same modification {} as {}", getId(), modToApply, isoform.getId());
-                    return true;
-                }
+        if (parentIsoform.modifications == null) {
+            return false;
+        }
+        for (Isoforms.Modification ownModification : parentIsoform.getModifications()) {
+            if (modToApply.getBegin() == ownModification.getBegin()
+                    && modToApply.getEnd() == ownModification.getEnd()
+                    && subToApply.equals(ownModification.getSubstitution())) {
+                logger.trace("{} has the same modification {} as {}", getId(), modToApply, isoform.getId());
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean checkForEndOverlapsInThisSequence(Isoforms.Modification modToApply, Isoform isoform, int movedStart) {
+        String subToApply = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
+        if (parentIsoform.modifications == null) {
+            return false;
+        }
+        for (Isoforms.Modification ownModification : parentIsoform.getModifications()){
+           
+            String modSub = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
+            int modRealEnd = modToApply.getBegin() + modSub.length() > modToApply.getEnd() ? modToApply.getBegin() + modSub.length() : modToApply.getEnd();
+            String ownSub = ownModification.getSubstitution() != null? ownModification.getSubstitution() : "";
+            int ownRealEnd = ownModification.getBegin() + ownSub.length() > ownModification.getEnd()?ownModification.getBegin() + ownSub.length() :ownModification.getEnd();
+            
+             System.out.println(isoform.getId()+ "  " + modRealEnd + " -<- " + ownRealEnd + " " + this.getId());
+            if (modToApply.getBegin() <= ownModification.getEnd()
+                    && modRealEnd >= ownRealEnd ){ 
+               
+                SequenceFeature gap = new SequenceFeature();
+                gap.setStart(modToApply.getBegin() + ownSub.length());
+                gap.setEnd(modRealEnd);
+                gap.setType("gap");
+                addFeature(gap);
+                 System.out.println("found overlap " + gap + " for " + getId()) ;
+                return true;
+                
             }
         }
         return false;
-
     }
 
     public String getType() {
