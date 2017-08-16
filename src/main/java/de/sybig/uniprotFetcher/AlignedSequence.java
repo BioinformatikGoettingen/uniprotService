@@ -65,6 +65,10 @@ public class AlignedSequence {
             addFeature(substitution);
         }
         int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
+        if (m.getBegin() + sub - 1 >sequence.length()){
+            return;
+            //TODO add test
+        }
         SequenceFeature gap = new SequenceFeature();
         gap.setStart(m.getBegin() + movedStart + sub);
         gap.setEnd(m.getEnd() + movedStart);
@@ -110,7 +114,7 @@ public class AlignedSequence {
             gap.setEnd(modToApplyEnd);
             gap.setType("gapI");
 //            addFeature(gap);
-            System.out.println(getId() + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
+//            System.out.println(getId() + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
 
             sequence = sequence.substring(0, (modToApply.getBegin() - 1))
                     + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
@@ -155,7 +159,6 @@ public class AlignedSequence {
             if (sf.getType() != null && sf.getType().startsWith("gap")
                     && (modToApply.getBegin() >= (sf.getStart()))
                     && ((modToApply.getBegin() + modToApply.getSubstitution().length()) <= (sf.getEnd()))) {
-                System.out.println("no new feature " + isoform.getId());
                 return true;
             }
             // ToDo overalap at start
@@ -167,7 +170,7 @@ public class AlignedSequence {
     @Deprecated
     private boolean checkForSameModificationInThisSequence(Isoforms.Modification modToApply, Isoform isoform, int movedStart) {
         String subToApply = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
-        if (parentIsoform.modifications == null) {
+        if (parentIsoform.getModifications() == null) {
             return false;
         }
         for (Isoforms.Modification ownModification : parentIsoform.getModifications()) {
@@ -184,7 +187,7 @@ public class AlignedSequence {
 
     private boolean checkForEndOverlapsInThisSequence(Isoforms.Modification modToApply, Isoform isoform, int movedStart) {
         String subToApply = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
-        if (parentIsoform.modifications == null) {
+        if (parentIsoform.getModifications() == null) {
             return false;
         }
         for (Isoforms.Modification ownModification : parentIsoform.getModifications()){
@@ -194,7 +197,7 @@ public class AlignedSequence {
             String ownSub = ownModification.getSubstitution() != null? ownModification.getSubstitution() : "";
             int ownRealEnd = ownModification.getBegin() + ownSub.length() > ownModification.getEnd()?ownModification.getBegin() + ownSub.length() :ownModification.getEnd();
             
-             System.out.println(isoform.getId()+ "  " + modRealEnd + " -<- " + ownRealEnd + " " + this.getId());
+//             System.out.println(isoform.getId()+ "  " + modRealEnd + " -<- " + ownRealEnd + " " + this.getId());
             if (modToApply.getBegin() <= ownModification.getEnd()
                     && modRealEnd >= ownRealEnd ){ 
                
@@ -203,7 +206,7 @@ public class AlignedSequence {
                 gap.setEnd(modRealEnd);
                 gap.setType("gap");
                 addFeature(gap);
-                 System.out.println("found overlap " + gap + " for " + getId()) ;
+//                 System.out.println("found overlap " + gap + " for " + getId()) ;
                 return true;
                 
             }

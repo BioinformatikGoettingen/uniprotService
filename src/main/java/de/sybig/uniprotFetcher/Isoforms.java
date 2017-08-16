@@ -45,7 +45,7 @@ public class Isoforms {
     @Path("/isoforms/{uniprotID}")
     public List<Isoform> getIsoforms(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         Document doc = getDocument(uniprotID);
-        List<Isoform> isoforms = new LinkedList<Isoform>();
+        List<Isoform> isoforms = new LinkedList<>();
         isoforms.add(getCanonicalSequence(doc));
         isoforms.addAll(getModifiedSequences(doc));
         return isoforms;
@@ -100,7 +100,7 @@ public class Isoforms {
                 + "  tooltip.setAttributeNS(null,\"x\",evt.clientX+11);\n"
                 + "  tooltip.setAttributeNS(null,\"y\",evt.clientY+27);\n"
                 + "  tooltip.firstChild.data = mouseovertext;\n"
-                + "  tooltip.setAttributeNS(null,\"visibility\",\"visible\");\n" 
+                + "  tooltip.setAttributeNS(null,\"visibility\",\"visible\");\n"
                 + "}\n"
                 + "\n"
                 + "function HideTooltip()\n"
@@ -132,8 +132,8 @@ public class Isoforms {
                 }
                 svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
                         + "stroke = \"none\" fill = \"#%s\" "
-                    + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
-                    + "    onmouseout=\"HideTooltip()\" /> \n",
+                        + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
+                        + "    onmouseout=\"HideTooltip()\" /> \n",
                         (int) (feature.getStart() * aaSize + 5),
                         ypos + 1, (int) (aaSize * (feature.getEnd() - feature.getStart())), color,
                         feature.getStart() + " - " + feature.getEnd()));
@@ -154,7 +154,6 @@ public class Isoforms {
         for (AlignedSequence sequence : alignment) {
             maxLength = sequence.getSequence().length() > maxLength ? sequence.getSequence().length() : maxLength;
         }
-//        System.out.println("max length " + maxLength);
         return maxLength;
     }
 
@@ -201,6 +200,9 @@ public class Isoforms {
 
     private Isoform processSequenceNode(Node descpriptionNode, Document doc) throws XPathExpressionException {
         Isoform isoform = new Isoform();
+        String url = descpriptionNode.getAttributes().getNamedItem("rdf:about").getTextContent();
+        isoform.setUrl(url);
+        isoform.setId(url.substring(url.lastIndexOf("/") + 1));
         NodeList children = descpriptionNode.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
@@ -212,9 +214,7 @@ public class Isoforms {
             } else if ("modification".equals(name)) {
                 isoform.addModification(getModificationNode(child.getAttributes().getNamedItem("rdf:resource").getNodeValue(), doc));
             }
-            String url = descpriptionNode.getAttributes().getNamedItem("rdf:about").getTextContent();
-            isoform.setUrl(url);
-            isoform.setId(url.substring(url.lastIndexOf("/") + 1));
+
         }
         return isoform;
     }
@@ -226,7 +226,7 @@ public class Isoforms {
         XPathExpression expr = xpath.compile("/RDF/Description[@about='" + uri + "']");
         Node node = (Node) expr.evaluate(doc, XPathConstants.NODE);
         NodeList children = node.getChildNodes();
-
+        modification.setId(uri.substring(uri.lastIndexOf("/") + 1));
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
             if ("substitution".equals(child.getNodeName())) {
@@ -298,11 +298,11 @@ public class Isoforms {
 
     class Isoform {
 
-        String id;
-        String url;
-        List<String> names;
-        String sequence;
-        List<Modification> modifications;
+        private String id;
+        private String url;
+        private List<String> names;
+        private String sequence;
+        private List<Modification> modifications;
 
         public String getSequence() {
             return sequence;
@@ -357,13 +357,18 @@ public class Isoforms {
             }
             modifications.add(modificaton);
         }
+
+        private void setUniprotId(String substring) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
     }
 
     public class Modification {
 
-        String substitution;
-        int begin;
-        int end;
+        private String substitution;
+        private int begin;
+        private int end;
+        private transient String id;
 
         public String getSubstitution() {
             return substitution;
@@ -387,6 +392,19 @@ public class Isoforms {
 
         public void setEnd(int end) {
             this.end = end;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Modification %s from %d to %d substitution %s", id, begin, end, substitution);
         }
     }
 }
