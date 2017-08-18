@@ -1,12 +1,15 @@
 package de.sybig.uniprotFetcher;
 
+import java.io.IOException;
 import java.util.List;
+import javax.xml.parsers.ParserConfigurationException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.junit.Ignore;
 
 /**
  *
@@ -43,7 +46,6 @@ public class IsoformsTest {
      */
     @Test
     public void testGetAlignmentPos() throws Exception {
-        System.out.println("getAlignmentPos");
         String uniprotID = "test2sameSubs";
 
         List<AlignedSequence> result = instance.getAlignmentPos(uniprotID);
@@ -53,6 +55,11 @@ public class IsoformsTest {
         AlignedSequence iso3 = result.get(2);
         assertEquals(iso1.getSequence().length(), iso2.getSequence().length());
         assertEquals(iso1.getSequence().length(), iso3.getSequence().length());
+        assertEquals(2, iso1.getFeatures().size());
+        assertEquals(1, iso2.getFeatures().size());
+        assertEquals(1, iso3.getFeatures().size());
+  
     }
 
 }
+    

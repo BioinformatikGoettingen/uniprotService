@@ -39,8 +39,10 @@ public class AlignedSequence {
      */
     public void applyModification(Isoforms.Modification m, Isoform isoform) {
         if ((m.getEnd() - m.getBegin()) > m.getSubstitution().length()) {
+            logger.trace("Treating modification as deletion");
             applyDeletion(m, isoform);
         } else {
+            logger.trace("Treating modification as insertion");
             applyInsertion(m, isoform);
         }
 
@@ -65,7 +67,7 @@ public class AlignedSequence {
             addFeature(substitution);
         }
         int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
-        if (m.getBegin() + sub - 1 >sequence.length()){
+        if (m.getBegin() + sub - 1 > sequence.length()) {
             return;
             //TODO add test
         }
@@ -87,8 +89,10 @@ public class AlignedSequence {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
+        logger.trace("moved start is: {}", movedStart);
 
         if (insertMismatchInOwningSequence(modToApply, isoform, movedStart)) {
+
             return;
         }
 
@@ -97,23 +101,31 @@ public class AlignedSequence {
         }
         /// search overlapping gaps in canonical sequence
 
-        if (checkForSameModificationInThisSequence(modToApply, isoform, movedStart)) {
-//            return;
-        }
-         checkForEndOverlapsInThisSequence(modToApply, isoform, movedStart);
+//        if (checkForSameModificationInThisSequence(modToApply, isoform, movedStart)) {
+////            return;
+//        }
+        checkForEndOverlapsInThisSequence(modToApply, isoform, movedStart);
 //        /// overlap in modified sequences
-
+        logger.trace("{} --?== {}", isoform.getId(), getId());
+        if (isoform.getId().equals(getId())) {
+            logger.trace("stopping on this sequence, its the owning one.");
+            return;
+        }
+        if (sameModiInThisSequence(modToApply)){
+            return;
+        }
         //System.out.println("inserting gap in " + modToApply);
+        logger.trace("on other sequence");
         int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
-        if (sub > modToApply.getEnd() - modToApply.getBegin()) {
-
+        if (sub > (modToApply.getEnd() - modToApply.getBegin())) {
             SequenceFeature gap = new SequenceFeature();
             gap.setStart(modToApply.getBegin() + movedStart);
             int modToApplyEnd = modToApply.getEnd() + movedStart + sub;
 //            int ownEnd = parentIsoform.
             gap.setEnd(modToApplyEnd);
             gap.setType("gapI");
-//            addFeature(gap);
+            addFeature(gap);
+            logger.debug("Adding feature {} to sequence {}", gap, getId());
 //            System.out.println(getId() + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
 
             sequence = sequence.substring(0, (modToApply.getBegin() - 1))
@@ -121,6 +133,24 @@ public class AlignedSequence {
                     + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
 
         }
+    }
+
+    private boolean sameModiInThisSequence(Isoforms.Modification modToApply) {
+        if (parentIsoform.getModifications() == null){
+            return false;
+        }
+        for (Isoforms.Modification m : parentIsoform.getModifications()){
+            if (m.getId().equals(modToApply.getId())){
+                return true;
+            }
+            if (m.getBegin() == modToApply.getBegin()
+                    && m.getEnd() == modToApply.getEnd()
+                    && m.getSubstitution().equals(modToApply.getSubstitution())){
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -138,7 +168,15 @@ public class AlignedSequence {
      * <code>false</code> otherwise.
      */
     private boolean insertMismatchInOwningSequence(Isoforms.Modification modToApply, Isoform isoform, int movedStart) {
+        if (true) {
+            return false;
+        }
+        logger.trace("Inserting mismatch in owning sequence?");
         if (getId().equals(isoform.getId())) {
+            logger.trace("Yes, on owning sequence. Testing substituion {}", modToApply.getSubstitution());
+            if (modToApply.getSubstitution() != null) {
+                logger.trace("{} <= {} - {} ?", modToApply.getSubstitution().length(), modToApply.getEnd(), modToApply.getBegin());
+            }
             if (modToApply.getSubstitution() != null
                     && modToApply.getSubstitution().length() <= (modToApply.getEnd() - modToApply.getBegin())) {
 
@@ -147,9 +185,11 @@ public class AlignedSequence {
                 mismatch.setEnd(modToApply.getBegin() + modToApply.getSubstitution().length() + movedStart);
                 mismatch.setType("mismatch");
                 addFeature(mismatch);
+                logger.trace("Mismatch inserted into owning sequence");
             }
             return true;
         }
+        logger.trace(("Not on the owning sequence"));
         return false;
     }
 
@@ -190,17 +230,17 @@ public class AlignedSequence {
         if (parentIsoform.getModifications() == null) {
             return false;
         }
-        for (Isoforms.Modification ownModification : parentIsoform.getModifications()){
-           
+        for (Isoforms.Modification ownModification : parentIsoform.getModifications()) {
+
             String modSub = modToApply.getSubstitution() != null ? modToApply.getSubstitution() : "";
             int modRealEnd = modToApply.getBegin() + modSub.length() > modToApply.getEnd() ? modToApply.getBegin() + modSub.length() : modToApply.getEnd();
-            String ownSub = ownModification.getSubstitution() != null? ownModification.getSubstitution() : "";
-            int ownRealEnd = ownModification.getBegin() + ownSub.length() > ownModification.getEnd()?ownModification.getBegin() + ownSub.length() :ownModification.getEnd();
-            
+            String ownSub = ownModification.getSubstitution() != null ? ownModification.getSubstitution() : "";
+            int ownRealEnd = ownModification.getBegin() + ownSub.length() > ownModification.getEnd() ? ownModification.getBegin() + ownSub.length() : ownModification.getEnd();
+
 //             System.out.println(isoform.getId()+ "  " + modRealEnd + " -<- " + ownRealEnd + " " + this.getId());
             if (modToApply.getBegin() <= ownModification.getEnd()
-                    && modRealEnd >= ownRealEnd ){ 
-               
+                    && modRealEnd > ownRealEnd) {
+
                 SequenceFeature gap = new SequenceFeature();
                 gap.setStart(modToApply.getBegin() + ownSub.length());
                 gap.setEnd(modRealEnd);
@@ -208,7 +248,7 @@ public class AlignedSequence {
                 addFeature(gap);
 //                 System.out.println("found overlap " + gap + " for " + getId()) ;
                 return true;
-                
+
             }
         }
         return false;

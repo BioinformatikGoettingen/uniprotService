@@ -21,6 +21,8 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -34,6 +36,7 @@ import org.xml.sax.SAXException;
 @Produces(MediaType.APPLICATION_JSON)
 public class Isoforms {
 
+    private static final Logger logger = LoggerFactory.getLogger(Isoforms.class);
     private final UniProtConfiguration configuration;
 //    private Document document;
 
@@ -48,6 +51,7 @@ public class Isoforms {
         List<Isoform> isoforms = new LinkedList<>();
         isoforms.add(getCanonicalSequence(doc));
         isoforms.addAll(getModifiedSequences(doc));
+        logger.trace("Got {} isoforms for {}", isoforms.size(), uniprotID);
         return isoforms;
     }
 
@@ -66,6 +70,7 @@ public class Isoforms {
             }
             for (Modification m : isoform.getModifications()) {
                 for (AlignedSequence as : sequences) {
+                    logger.trace("Applying modification '{}' to sequence {}", m, as.getId());
                     as.applyModification(m, isoform);  // the current modification and the parent isoform
                 }
 //                break;
@@ -130,13 +135,14 @@ public class Isoforms {
                 if (color == null) {
                     continue;
                 }
+                String tooltip = feature.getType() +": " + feature.getStart() + " - " + feature.getEnd();
                 svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
                         + "stroke = \"none\" fill = \"#%s\" "
                         + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
                         + "    onmouseout=\"HideTooltip()\" /> \n",
                         (int) (feature.getStart() * aaSize + 5),
                         ypos + 1, (int) (aaSize * (feature.getEnd() - feature.getStart())), color,
-                        feature.getStart() + " - " + feature.getEnd()));
+                        tooltip));
             }
             svg.append(String.format("  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"10\" fill=\"blue\">%s</text>\n</g>\n\n",
                     width - 60, ypos + 15, sequence.getId()));
