@@ -49,7 +49,7 @@ public class AlignedSequence {
     }
 
     private void applyDeletion(Isoforms.Modification m, Isoform isoform) {
-        if (getId().equals(isoform.getId())) {
+        if (!getId().equals(isoform.getId())) {
             return;
         }
         int movedStart = 0;

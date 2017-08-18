@@ -58,8 +58,17 @@ public class IsoformsTest {
         assertEquals(2, iso1.getFeatures().size());
         assertEquals(1, iso2.getFeatures().size());
         assertEquals(1, iso3.getFeatures().size());
-  
+
     }
 
+    @Test
+    public void oneIsoformWithDeletion() throws Exception {
+        List<AlignedSequence> result = instance.getAlignmentPos("1isoWithDeletion");
+        AlignedSequence iso1 = result.get(0);
+        AlignedSequence iso2 = result.get(1);
+        assertEquals(iso1.getSequence().length(), iso2.getSequence().length());
+        assertEquals(1, iso1.getFeatures().size());
+        assertEquals(2, iso2.getFeatures().size());
+
+    }
 }
-    
