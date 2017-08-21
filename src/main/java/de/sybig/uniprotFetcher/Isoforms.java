@@ -80,15 +80,39 @@ public class Isoforms {
     }
 
     @GET
+    @Path("/isoforms/svg/{uniprotID}/{sequence}")
+    @Produces("image/svg+xml")
+    public String getSVGWithSequence(@PathParam(value = "uniprotID") String uniprotID, @PathParam(value = "sequence") String sequence) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+
+        int width = 1000;
+        List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
+
+//        System.out.println("aa size " + aaSize);
+        StringBuilder svg = new StringBuilder();
+        svg = addSVGStart(svg, width);
+        addDBD(svg, sequence, alignment, width);
+        svg = addAlignmentsToSVG(svg, alignment, width);
+        svg = addSVGEnd(svg);
+        return svg.toString();
+    }
+
+    @GET
     @Path("/isoforms/svg/{uniprotID}")
     @Produces("image/svg+xml")
     public String getSVG(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         int width = 1000;
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
-        double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
-//        System.out.println("aa size " + aaSize);
 
+//        System.out.println("aa size " + aaSize);
         StringBuilder svg = new StringBuilder();
+        svg = addSVGStart(svg, width);
+        svg = addAlignmentsToSVG(svg, alignment, width);
+        svg = addSVGEnd(svg);
+        return svg.toString();
+
+    }
+
+    private StringBuilder addSVGStart(StringBuilder svg, int width) {
         svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" onload=\"init(evt)\">\n", width));
         svg.append("<script type=\"text/ecmascript\">\n"
                 + "<![CDATA[\n"
@@ -113,7 +137,12 @@ public class Isoforms {
                 + "  tooltip.setAttributeNS(null,\"visibility\",\"hidden\");\n"
                 + "}"
                 + "]]></script>");
+        return svg;
+    }
+
+    private StringBuilder addAlignmentsToSVG(StringBuilder svg, List<AlignedSequence> alignment, int width) {
         int ypos = 10;
+        double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
         for (AlignedSequence sequence : alignment) {
             svg.append(String.format("<g>\n"
                     + "  <rect x = \"5\" y = \"%d\" width = \"%d\" height = \"20\" stroke = \"none\" fill = \"#FFBF00\"/>\n",
@@ -135,7 +164,7 @@ public class Isoforms {
                 if (color == null) {
                     continue;
                 }
-                String tooltip = feature.getType() +": " + feature.getStart() + " - " + feature.getEnd();
+                String tooltip = feature.getType() + ": " + feature.getStart() + " - " + feature.getEnd();
                 svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
                         + "stroke = \"none\" fill = \"#%s\" "
                         + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
@@ -148,11 +177,46 @@ public class Isoforms {
                     width - 60, ypos + 15, sequence.getId()));
             ypos += 25;
         }
+        return svg;
+
+    }
+
+    private StringBuilder addDBD(StringBuilder svg, String sequence, List<AlignedSequence> alignment, int width) {
+        String canonicalSequence = alignment.get(0).getSequence();
+        String origSequence = canonicalSequence.replace("-", "");
+        double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
+
+        int start = origSequence.indexOf(sequence);
+        if (start < 0){
+            logger.error("Could not find DBD for {}", alignment.get(0).getId());
+            return svg;
+        }
+        for (int pos = 0; pos < start; pos++) {
+            if ("-".equals(canonicalSequence.charAt(pos))) {
+                start++;
+            }
+        }
+        int end = start + sequence.length();
+        System.out.println("moved start " + start + " " + end);
+        for (int pos = start; pos < end; pos++) {
+            if ("-".equals(canonicalSequence.charAt(pos))) {
+                end++;
+            }
+        }
+        int height = 25 * alignment.size() + 20;
+        svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"#AAAAAA\"/>\n",
+                start, 0, (int) (aaSize * end - start), height
+        ));
+
+        logger.error("   found at " + start + " --- " + end);
+        return svg;
+    }
+
+    private StringBuilder addSVGEnd(StringBuilder svg) {
         svg.append("<text class=\"tooltip\" id=\"tooltip\"\n"
                 + "      x=\"0\" y=\"0\" visibility=\"hidden\">Tooltip</text>\n");
         svg.append("</svg>");
-        return svg.toString();
-
+        return svg;
     }
 
     private int getMaxSequenceLength(List<AlignedSequence> alignment) {
