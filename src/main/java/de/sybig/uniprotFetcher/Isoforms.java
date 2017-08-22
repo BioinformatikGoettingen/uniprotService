@@ -5,8 +5,11 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -35,7 +38,7 @@ import org.xml.sax.SAXException;
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
 public class Isoforms {
-
+    
     private static final Logger logger = LoggerFactory.getLogger(Isoforms.class);
     private final UniProtConfiguration configuration;
 //    private Document document;
@@ -43,7 +46,7 @@ public class Isoforms {
     Isoforms(UniProtConfiguration configuration) {
         this.configuration = configuration;
     }
-
+    
     @GET
     @Path("/isoforms/{uniprotID}")
     public List<Isoform> getIsoforms(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
@@ -54,7 +57,7 @@ public class Isoforms {
         logger.trace("Got {} isoforms for {}", isoforms.size(), uniprotID);
         return isoforms;
     }
-
+    
     @GET
     @Path("/isoforms/alignmentPos/{uniprotID}")
     public List<AlignedSequence> getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
@@ -78,12 +81,12 @@ public class Isoforms {
         }
         return sequences;
     }
-
+    
     @GET
     @Path("/isoforms/svg/{uniprotID}/{sequence}")
     @Produces("image/svg+xml")
     public String getSVGWithSequence(@PathParam(value = "uniprotID") String uniprotID, @PathParam(value = "sequence") String sequence) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
-
+        
         int width = 1000;
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
 
@@ -95,7 +98,7 @@ public class Isoforms {
         svg = addSVGEnd(svg);
         return svg.toString();
     }
-
+    
     @GET
     @Path("/isoforms/svg/{uniprotID}")
     @Produces("image/svg+xml")
@@ -109,9 +112,48 @@ public class Isoforms {
         svg = addAlignmentsToSVG(svg, alignment, width);
         svg = addSVGEnd(svg);
         return svg.toString();
-
+        
     }
-
+    
+    @GET
+    @Path("/best/{uniprotIDs}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String selectBest(@PathParam(value = "uniprotIDs") String uniprotIDs) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
+        
+        List<UniProtQuality> items = new LinkedList<>();
+        XPathFactory xPathfactory = XPathFactory.newInstance();
+        
+        for (String id : uniprotIDs.split(",")) {
+            UniProtQuality prot = new UniProtQuality();
+            prot.setId(id);
+            
+            Document doc = getDocument(id);
+            XPath xpath = xPathfactory.newXPath();
+            XPathExpression expr = xpath.compile("/RDF/Description/reviewed");
+            
+            Node reviewedNode = (Node) expr.evaluate(doc, XPathConstants.NODE);
+            if (reviewedNode == null || reviewedNode.getTextContent().equals("false")) {
+                prot.setReviewed(false);
+            } else {
+                prot.setReviewed(true);
+            }
+            xpath = xPathfactory.newXPath();
+            expr = xpath.compile("/RDF/Description/existence");
+            Node evidenceNode = (Node) expr.evaluate(doc, XPathConstants.NODE);
+            if (evidenceNode != null) {
+//                System.out.println("node " + evidenceNode);
+//                System.out.println("atts " + evidenceNode.getAttributes());
+//                System.out.println("res " + evidenceNode.getAttributes().getNamedItem("rdf:resource"));
+                prot.setLevel(evidenceNode.getAttributes().getNamedItem("rdf:resource").getNodeValue());
+            }
+            items.add(prot);
+        }
+        items.sort(new UniprotQualityComparator());
+        System.out.println("sorted list " + items);
+        return items.get(0).getId();
+        
+    }
+    
     private StringBuilder addSVGStart(StringBuilder svg, int width) {
         svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" onload=\"init(evt)\">\n", width));
         svg.append("<script type=\"text/ecmascript\">\n"
@@ -139,7 +181,7 @@ public class Isoforms {
                 + "]]></script>");
         return svg;
     }
-
+    
     private StringBuilder addAlignmentsToSVG(StringBuilder svg, List<AlignedSequence> alignment, int width) {
         int ypos = 10;
         double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
@@ -148,7 +190,7 @@ public class Isoforms {
                     + "  <rect x = \"5\" y = \"%d\" width = \"%d\" height = \"20\" stroke = \"none\" fill = \"#FFBF00\"/>\n",
                     ypos, (int) (aaSize * sequence.getSequence().length())
             ));
-
+            
             for (SequenceFeature feature : sequence.getFeatures()) {
                 String color = null;
                 if ("gap".equals(feature.getType())) {
@@ -160,7 +202,7 @@ public class Isoforms {
                 } else if ("gapI".equals(feature.getType())) {
                     color = "00FF00";
                 }
-
+                
                 if (color == null) {
                     continue;
                 }
@@ -178,16 +220,16 @@ public class Isoforms {
             ypos += 25;
         }
         return svg;
-
+        
     }
-
+    
     private StringBuilder addDBD(StringBuilder svg, String sequence, List<AlignedSequence> alignment, int width) {
         String canonicalSequence = alignment.get(0).getSequence();
         String origSequence = canonicalSequence.replace("-", "");
         double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
-
+        
         int start = origSequence.indexOf(sequence);
-        if (start < 0){
+        if (start < 0) {
             logger.error("Could not find DBD for {}", alignment.get(0).getId());
             return svg;
         }
@@ -207,18 +249,18 @@ public class Isoforms {
         svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"#AAAAAA\"/>\n",
                 start, 0, (int) (aaSize * end - start), height
         ));
-
+        
         logger.error("   found at " + start + " --- " + end);
         return svg;
     }
-
+    
     private StringBuilder addSVGEnd(StringBuilder svg) {
         svg.append("<text class=\"tooltip\" id=\"tooltip\"\n"
                 + "      x=\"0\" y=\"0\" visibility=\"hidden\">Tooltip</text>\n");
         svg.append("</svg>");
         return svg;
     }
-
+    
     private int getMaxSequenceLength(List<AlignedSequence> alignment) {
         int maxLength = 0;
         for (AlignedSequence sequence : alignment) {
@@ -226,40 +268,40 @@ public class Isoforms {
         }
         return maxLength;
     }
-
+    
     private Document getDocument(String uniprotID) throws IOException, SAXException, ParserConfigurationException {
-
+        
         File rdfFile = getRDFfile(uniprotID);
-
+        
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document document = builder.parse(rdfFile);
-
+        
         return document;
     }
-
+    
     private Isoform getCanonicalSequence(Document doc) throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
-
+        
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description/type[@resource='http://purl.uniprot.org/core/Simple_Sequence']/parent::Description");
         NodeList result = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
         Isoform isoform = new Isoform();
-
+        
         if (result.getLength() > 0) {
             Node descpriptionNode = result.item(0);
-
+            
             isoform = processSequenceNode(descpriptionNode, doc);
         }
         return isoform;
     }
-
+    
     private List<Isoform> getModifiedSequences(Document doc) throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description/type[@resource='http://purl.uniprot.org/core/Modified_Sequence']/parent::Description");
         NodeList modifiedSequences = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
-
+        
         List<Isoform> isoforms = new LinkedList<>();
         for (int i = 0; i < modifiedSequences.getLength(); i++) {
             Node isoformNode = modifiedSequences.item(i);
@@ -267,7 +309,7 @@ public class Isoforms {
         }
         return isoforms;
     }
-
+    
     private Isoform processSequenceNode(Node descpriptionNode, Document doc) throws XPathExpressionException {
         Isoform isoform = new Isoform();
         String url = descpriptionNode.getAttributes().getNamedItem("rdf:about").getTextContent();
@@ -284,11 +326,11 @@ public class Isoforms {
             } else if ("modification".equals(name)) {
                 isoform.addModification(getModificationNode(child.getAttributes().getNamedItem("rdf:resource").getNodeValue(), doc));
             }
-
+            
         }
         return isoform;
     }
-
+    
     private Modification getModificationNode(String uri, Document doc) throws XPathExpressionException {
         Modification modification = new Modification();
         XPathFactory xPathfactory = XPathFactory.newInstance();
@@ -307,9 +349,9 @@ public class Isoforms {
         }
         return modification;
     }
-
+    
     private Modification getRange(Modification modification, String uri, Document doc) throws XPathExpressionException {
-
+        
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
         XPathExpression expr = xpath.compile("/RDF/Description[@about='" + uri + "']");
@@ -327,10 +369,10 @@ public class Isoforms {
                 modification.setEnd(getPos(child.getAttributes().getNamedItem("rdf:resource").getNodeValue(), doc));
             }
         }
-
+        
         return modification;
     }
-
+    
     private int getPos(String uri, Document doc) throws XPathExpressionException {
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
@@ -341,9 +383,9 @@ public class Isoforms {
         }
         return Integer.parseInt(node.getTextContent());
     }
-
+    
     private File getRDFfile(String id) throws MalformedURLException, IOException {
-
+        
         File localFile = getLocalRDFfile(id);
         if (localFile == null) {
             FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
@@ -351,7 +393,7 @@ public class Isoforms {
         }
         return getLocalRDFfile(id);
     }
-
+    
     private File getLocalRDFfile(String id) {
         File file = getLocalFile(id);
         if (file.canRead()) {
@@ -359,122 +401,191 @@ public class Isoforms {
         }
         return null;
     }
-
+    
     private File getLocalFile(String id) {
         File dataDir = new File(configuration.getDataDir());
         File file = new File(dataDir, id + ".rdf");
         return file;
     }
-
+    
     class Isoform {
-
+        
         private String id;
         private String url;
         private List<String> names;
         private String sequence;
         private List<Modification> modifications;
-
+        
         public String getSequence() {
             return sequence;
         }
-
+        
         public void setSequence(String sequence) {
             this.sequence = sequence;
         }
-
+        
         public String getId() {
             return id;
         }
-
+        
         public void setId(String id) {
             this.id = id;
         }
-
+        
         public String getUrl() {
             return url;
         }
-
+        
         public void setUrl(String url) {
             this.url = url;
         }
-
+        
         public List<String> getNames() {
             return names;
         }
-
+        
         public void setNames(List<String> names) {
             this.names = names;
         }
-
+        
         public void addName(String name) {
             if (this.names == null) {
                 names = new ArrayList<>();
             }
             names.add(name);
         }
-
+        
         public List<Modification> getModifications() {
             return modifications;
         }
-
+        
         public void setModifications(List<Modification> modifications) {
             this.modifications = modifications;
         }
-
+        
         public void addModification(Modification modificaton) {
             if (modifications == null) {
                 modifications = new ArrayList<>();
             }
             modifications.add(modificaton);
         }
-
+        
         private void setUniprotId(String substring) {
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
     }
-
+    
     public class Modification {
-
+        
         private String substitution;
         private int begin;
         private int end;
         private transient String id;
-
+        
         public String getSubstitution() {
             return substitution;
         }
-
+        
         public void setSubstitution(String substitution) {
             this.substitution = substitution;
         }
-
+        
         public int getBegin() {
             return begin;
         }
-
+        
         public void setBegin(int begin) {
             this.begin = begin;
         }
-
+        
         public int getEnd() {
             return end + 1;
         }
-
+        
         public void setEnd(int end) {
             this.end = end;
         }
-
+        
         public String getId() {
             return id;
         }
-
+        
         public void setId(String id) {
             this.id = id;
         }
-
+        
         @Override
         public String toString() {
             return String.format("Modification %s from %d to %d substitution %s", id, begin, end, substitution);
         }
+    }
+    
+    class UniProtQuality {
+        
+        private String id;
+        private boolean reviewed = false;
+        private int level = 0;
+        
+        public String getId() {
+            return id;
+        }
+        
+        public void setId(String id) {
+            this.id = id;
+        }
+        
+        public boolean isReviewed() {
+            return reviewed;
+        }
+        
+        public void setReviewed(boolean reviewed) {
+            this.reviewed = reviewed;
+        }
+        
+        public int getLevel() {
+            return level;
+        }
+        
+        public void setLevel(int level) {
+            this.level = level;
+        }
+        
+        public void setLevel(String level) {
+            if ("http://purl.uniprot.org/core/Evidence_at_Protein_Level_Existence".equals(level)) {
+                this.level = 1;
+            } else if ("http://purl.uniprot.org/core/Evidence_at_Transcript_Level_Existence".equals(level)) {
+                this.level = 2;
+            }else if ("http://purl.uniprot.org/core/Inferred_from_Homology_Existence".equals(level)){
+                this.level = 3;
+            }else if("http://purl.uniprot.org/core/Predicted_Existence".equals(level)){
+                this.level = 4;
+            }
+            else{
+                System.out.println("level not found " + level);
+            }
+        }
+        public String toString(){
+            return String.format("%s {%b %d}", id, reviewed, level);
+        }
+        //1. Experimental evidence at protein level   <existence rdf:resource="http://purl.uniprot.org/core/Evidence_at_Protein_Level_Existence"/>
+//2. Experimental evidence at transcript level    <existence rdf:resource="http://purl.uniprot.org/core/Evidence_at_Transcript_Level_Existence"/>
+//3. Protein inferred from homology  http://purl.uniprot.org/core/Inferred_from_Homology_Existence
+//4. Protein predicted http://purl.uniprot.org/core/Predicted_Existence
+//5. Protein uncertain
+    }
+    
+    class UniprotQualityComparator implements Comparator<UniProtQuality> {
+        
+        @Override
+        public int compare(UniProtQuality o1, UniProtQuality o2) {
+            if (o1.isReviewed() && !o2.isReviewed()) {
+                return -1;
+            }
+            if (!o1.isReviewed() && o2.isReviewed()) {
+                return 1;
+            }
+            return (((Integer)o1.getLevel()).compareTo((Integer)o2.getLevel()) );
+        }
+        
     }
 }
