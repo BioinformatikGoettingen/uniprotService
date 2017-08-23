@@ -10,11 +10,15 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.PathSegment;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -85,18 +89,37 @@ public class Isoforms {
     @GET
     @Path("/isoforms/svg/{uniprotID}/{sequence}")
     @Produces("image/svg+xml")
-    public String getSVGWithSequence(@PathParam(value = "uniprotID") String uniprotID, @PathParam(value = "sequence") String sequence) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
-
+    public String getSVGWithSequence(
+            @PathParam(value = "uniprotID") String uniprotID,
+            @PathParam(value = "sequence") String sequence, 
+            @QueryParam("color") String color) 
+            throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+        
+        System.out.println("in color " + color);
         int width = 1000;
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
 
-//        System.out.println("aa size " + aaSize);
         StringBuilder svg = new StringBuilder();
         svg = addSVGStart(svg, width);
-        addDBD(svg, sequence, alignment, width);
+        addDBD(svg, sequence, alignment, width, validateColor("#"+color));
         svg = addAlignmentsToSVG(svg, alignment, width);
         svg = addSVGEnd(svg);
         return svg.toString();
+    }
+
+    private String validateColor(String color) {
+        if (color == null) {
+            System.out.println("color is null");
+            color = "#AAAAAA";
+        }
+        Pattern pattern = Pattern.compile("^#[0-9A-Fa-f]{6}$");
+        Matcher matcher = pattern.matcher(color);
+        if (!matcher.find()) {
+            System.out.println("color does not mathch "+ color);
+            color = "#AAAAAA";
+        }
+                System.out.println("setting color to " + color);
+        return color;
     }
 
     @GET
@@ -128,7 +151,7 @@ public class Isoforms {
             prot.setId(id);
 
             Document doc = getDocument(id);
-            
+
             XPath xpath = xPathfactory.newXPath();
             XPathExpression expr = xpath.compile("/RDF/Description/reviewed");
             Node reviewedNode = (Node) expr.evaluate(doc, XPathConstants.NODE);
@@ -137,7 +160,7 @@ public class Isoforms {
             } else {
                 prot.setReviewed(true);
             }
-            
+
             xpath = xPathfactory.newXPath();
             expr = xpath.compile("/RDF/Description/obsolete");
             Node obsoleteNode = (Node) expr.evaluate(doc, XPathConstants.NODE);
@@ -146,7 +169,7 @@ public class Isoforms {
             } else {
                 prot.setObsolete(true);
             }
-            
+
             xpath = xPathfactory.newXPath();
             expr = xpath.compile("/RDF/Description/existence");
             Node evidenceNode = (Node) expr.evaluate(doc, XPathConstants.NODE);
@@ -206,7 +229,7 @@ public class Isoforms {
                 if ("gap".equals(feature.getType())) {
                     color = "EEEEEE";
                 } else if ("mismatch".equals(feature.getType())) {
-                    color = "FFCCCC";
+                    color = "FFAAAA";
                 } else if ("gapD".equals(feature.getType())) {
                     color = "EEEEEE";
                 } else if ("gapI".equals(feature.getType())) {
@@ -233,7 +256,7 @@ public class Isoforms {
 
     }
 
-    private StringBuilder addDBD(StringBuilder svg, String sequence, List<AlignedSequence> alignment, int width) {
+    private StringBuilder addDBD(StringBuilder svg, String sequence, List<AlignedSequence> alignment, int width, String color) {
         String canonicalSequence = alignment.get(0).getSequence();
         String origSequence = canonicalSequence.replace("-", "");
         double aaSize = ((double) width) / (getMaxSequenceLength(alignment));
@@ -256,9 +279,8 @@ public class Isoforms {
             }
         }
         int height = 25 * alignment.size() + 20;
-        svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"#AAAAAA\"/>\n",
-                start, 0, (int) (aaSize * end - start), height
-        ));
+        svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"%s\"/>\n",
+                start, 0, (int) (aaSize * end - start), height, color));
 
         logger.error("   found at " + start + " --- " + end);
         return svg;
@@ -608,10 +630,10 @@ public class Isoforms {
 
         @Override
         public int compare(UniProtQuality o1, UniProtQuality o2) {
-            if (o1.isObsolete() && !o2.isObsolete()){
+            if (o1.isObsolete() && !o2.isObsolete()) {
                 return 1;
             }
-            if (!o1.isObsolete() && o2.isObsolete()){
+            if (!o1.isObsolete() && o2.isObsolete()) {
                 return -1;
             }
             if (o1.isReviewed() && !o2.isReviewed()) {
