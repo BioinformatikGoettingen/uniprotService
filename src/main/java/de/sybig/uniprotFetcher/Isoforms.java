@@ -4,21 +4,20 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.GET;
-import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.PathSegment;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -39,7 +38,7 @@ import org.xml.sax.SAXException;
  *
  * @author juergen.doenitz@bioinf.med.uni-goettingen.de
  */
-@Path("/")
+@javax.ws.rs.Path("/")
 @Produces(MediaType.APPLICATION_JSON)
 public class Isoforms {
 
@@ -52,7 +51,7 @@ public class Isoforms {
     }
 
     @GET
-    @Path("/isoforms/{uniprotID}")
+    @javax.ws.rs.Path("/isoforms/{uniprotID}")
     public List<Isoform> getIsoforms(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         Document doc = getDocument(uniprotID);
         List<Isoform> isoforms = new LinkedList<>();
@@ -63,7 +62,7 @@ public class Isoforms {
     }
 
     @GET
-    @Path("/isoforms/alignmentPos/{uniprotID}")
+    @javax.ws.rs.Path("/isoforms/alignmentPos/{uniprotID}")
     public List<AlignedSequence> getAlignmentPos(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         List<Isoform> isoforms = getIsoforms(uniprotID);
         ArrayList<AlignedSequence> sequences = new ArrayList<>();
@@ -87,21 +86,20 @@ public class Isoforms {
     }
 
     @GET
-    @Path("/isoforms/svg/{uniprotID}/{sequence}")
+    @javax.ws.rs.Path("/isoforms/svg/{uniprotID}/{sequence}")
     @Produces("image/svg+xml")
     public String getSVGWithSequence(
             @PathParam(value = "uniprotID") String uniprotID,
-            @PathParam(value = "sequence") String sequence, 
-            @QueryParam("color") String color) 
+            @PathParam(value = "sequence") String sequence,
+            @QueryParam("color") String color)
             throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
-        
-        System.out.println("in color " + color);
+
         int width = 1000;
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
 
         StringBuilder svg = new StringBuilder();
         svg = addSVGStart(svg, width);
-        addDBD(svg, sequence, alignment, width, validateColor("#"+color));
+        addDBD(svg, sequence, alignment, width, validateColor("#" + color));
         svg = addAlignmentsToSVG(svg, alignment, width);
         svg = addSVGEnd(svg);
         return svg.toString();
@@ -109,21 +107,18 @@ public class Isoforms {
 
     private String validateColor(String color) {
         if (color == null) {
-            System.out.println("color is null");
             color = "#AAAAAA";
         }
         Pattern pattern = Pattern.compile("^#[0-9A-Fa-f]{6}$");
         Matcher matcher = pattern.matcher(color);
         if (!matcher.find()) {
-            System.out.println("color does not mathch "+ color);
             color = "#AAAAAA";
         }
-                System.out.println("setting color to " + color);
         return color;
     }
 
     @GET
-    @Path("/isoforms/svg/{uniprotID}")
+    @javax.ws.rs.Path("/isoforms/svg/{uniprotID}")
     @Produces("image/svg+xml")
     public String getSVG(@PathParam(value = "uniprotID") String uniprotID) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         int width = 1000;
@@ -139,7 +134,7 @@ public class Isoforms {
     }
 
     @GET
-    @Path("/best/{uniprotIDs}")
+    @javax.ws.rs.Path("/best/{uniprotIDs}")
     @Produces(MediaType.TEXT_PLAIN)
     public String selectBest(@PathParam(value = "uniprotIDs") String uniprotIDs) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
 
@@ -272,7 +267,7 @@ public class Isoforms {
             }
         }
         int end = start + sequence.length();
-        System.out.println("moved start " + start + " " + end);
+        //System.out.println("moved start " + start + " " + end);
         for (int pos = start; pos < end; pos++) {
             if ("-".equals(canonicalSequence.charAt(pos))) {
                 end++;
@@ -282,7 +277,7 @@ public class Isoforms {
         svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"%s\"/>\n",
                 start, 0, (int) (aaSize * end - start), height, color));
 
-        logger.error("   found at " + start + " --- " + end);
+        logger.debug("   found at " + start + " --- " + end);
         return svg;
     }
 
@@ -303,11 +298,11 @@ public class Isoforms {
 
     private Document getDocument(String uniprotID) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
 
-        File rdfFile = getRDFfile(uniprotID);
+        Path rdfFile = getRDFfile(uniprotID);
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
-        Document document = builder.parse(rdfFile);
+        Document document = builder.parse(rdfFile.toFile());
 
         XPathFactory xPathfactory = XPathFactory.newInstance();
         XPath xpath = xPathfactory.newXPath();
@@ -427,27 +422,27 @@ public class Isoforms {
         return Integer.parseInt(node.getTextContent());
     }
 
-    private File getRDFfile(String id) throws MalformedURLException, IOException {
+    private Path getRDFfile(String id) throws MalformedURLException, IOException {
 
-        File localFile = getLocalRDFfile(id);
+        Path localFile = getLocalRDFfile(id);
         if (localFile == null) {
+            logger.debug("getting from uniprot {}" , id);
             FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
-                    getLocalFile(id), 10 * 1000, 10 * 1000); // 10 seconds connectionTimeout and 10 seconds readTimeout
+                    getLocalFile(id).toFile(), 10 * 1000, 10 * 1000); // 10 seconds connectionTimeout and 10 seconds readTimeout
         }
         return getLocalRDFfile(id);
     }
 
-    private File getLocalRDFfile(String id) {
-        File file = getLocalFile(id);
-        if (file.canRead()) {
+    private Path getLocalRDFfile(String id) {
+        Path file = getLocalFile(id);
+        if (Files.isReadable(file)) {
             return file;
         }
         return null;
     }
 
-    private File getLocalFile(String id) {
-        File dataDir = new File(configuration.getDataDir());
-        File file = new File(dataDir, id + ".rdf");
+    private Path getLocalFile(String id) {
+        Path file = Paths.get(configuration.getDataDir(), id + ".rdf");
         return file;
     }
 
@@ -518,50 +513,7 @@ public class Isoforms {
         }
     }
 
-    public class Modification {
-
-        private String substitution;
-        private int begin;
-        private int end;
-        private transient String id;
-
-        public String getSubstitution() {
-            return substitution;
-        }
-
-        public void setSubstitution(String substitution) {
-            this.substitution = substitution;
-        }
-
-        public int getBegin() {
-            return begin;
-        }
-
-        public void setBegin(int begin) {
-            this.begin = begin;
-        }
-
-        public int getEnd() {
-            return end + 1;
-        }
-
-        public void setEnd(int end) {
-            this.end = end;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Modification %s from %d to %d substitution %s", id, begin, end, substitution);
-        }
-    }
+    
 
     class UniProtQuality {
 
