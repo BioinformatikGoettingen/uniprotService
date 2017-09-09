@@ -7,10 +7,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.GET;
@@ -424,23 +427,50 @@ public class Isoforms {
 
     private Path getRDFfile(String id) throws MalformedURLException, IOException {
 
-        Path localFile = getLocalRDFfile(id);
-        if (localFile == null) {
-            logger.debug("getting from uniprot {}" , id);
+        Path localFile = getLocalFile(id);
+
+        if (!Files.isReadable(localFile)) {
+            logger.debug("getting from uniprot {}", id);
             FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
                     getLocalFile(id).toFile(), 10 * 1000, 10 * 1000); // 10 seconds connectionTimeout and 10 seconds readTimeout
+            return localFile;
         }
-        return getLocalRDFfile(id);
+
+        FileTime validTime = FileTime.fromMillis(System.currentTimeMillis() - (1000 * 60 * 60 * 24 * new Long(90)));
+        
+        if (Files.readAttributes(localFile, BasicFileAttributes.class).lastModifiedTime().compareTo(validTime) < 1) {
+            logger.info("File {} is to old, will be refetched from uniprot.", localFile);
+            try{ 
+            FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
+                    getLocalFile(id).toFile(), 1500, 10 * 1000); // 1.5 seconds connectionTimeout and 10 seconds readTimeout
+            }catch(java.net.SocketTimeoutException ex){
+                logger.warn("Could not re-fetch {} from Uniprot in max 1.5 secs, using old file.");
+            }
+            return localFile;
+        }
+
+        return localFile;
     }
 
-    private Path getLocalRDFfile(String id) {
-        Path file = getLocalFile(id);
-        if (Files.isReadable(file)) {
-            return file;
-        }
-        return null;
-    }
-
+//    private Path getLocalRDFfile(String id) {
+//        Path file = getLocalFile(id);
+//        if (!Files.isReadable(file)) {
+//            return null;
+//        }
+//        
+//        FileTime validTime = FileTime.fromMillis(System.currentTimeMillis() - 1000 * 60* 60 *24 *60);
+//        try {
+//            System.out.println("time " + validTime);
+//            if( Files.readAttributes(file, BasicFileAttributes.class).creationTime().compareTo(validTime)>1) {
+//                logger.info("File {} is to old, will be refetched from uniprot.", file);
+//                return null;
+//            }
+//        } catch (IOException ex) {
+//            logger.info("Could not get creatoin time for file {}", file);
+//            return null;
+//        }
+//        return file;
+//    }
     private Path getLocalFile(String id) {
         Path file = Paths.get(configuration.getDataDir(), id + ".rdf");
         return file;
@@ -512,8 +542,6 @@ public class Isoforms {
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
     }
-
-    
 
     class UniProtQuality {
 
