@@ -71,4 +71,11 @@ public class IsoformsTest {
         assertEquals(2, iso2.getFeatures().size());
 
     }
+    
+    @Test
+    public void smallerOtherReplacment() throws Exception {
+          List<AlignedSequence> result = instance.getAlignmentPos("testSmallerOtherReplacement");
+        AlignedSequence iso1 = result.get(0);
+        AlignedSequence iso2 = result.get(1);
+    }
 }

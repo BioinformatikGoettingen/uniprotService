@@ -134,7 +134,7 @@ public class AlignedSequence {
 
         }
     }
-
+ 
     private boolean sameModiInThisSequence(Isoforms.Modification modToApply) {
         if (parentIsoform.getModifications() == null){
             return false;
