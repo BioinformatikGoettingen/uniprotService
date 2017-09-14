@@ -1,6 +1,5 @@
 package de.sybig.uniprotFetcher;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -13,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.GET;
@@ -278,7 +276,7 @@ public class Isoforms {
         }
         int height = 25 * alignment.size() + 20;
         svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"%s\"/>\n",
-                start, 0, (int) (aaSize * end - start), height, color));
+                (int)(aaSize * start), 0, (int) (aaSize * end - start), height, color));
 
         logger.debug("   found at " + start + " --- " + end);
         return svg;
