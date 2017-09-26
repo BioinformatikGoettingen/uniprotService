@@ -1,15 +1,12 @@
 package de.sybig.uniprotFetcher;
 
-import java.io.IOException;
 import java.util.List;
-import javax.xml.parsers.ParserConfigurationException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import org.junit.Ignore;
 
 /**
  *
