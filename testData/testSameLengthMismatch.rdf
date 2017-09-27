@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rdf:RDF xml:base="http://purl.uniprot.org/uniprot/" xmlns="http://purl.uniprot.org/core/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:bibo="http://purl.org/ontology/bibo/" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:void="http://rdfs.org/ns/void#" xmlns:sd="http://www.w3.org/ns/sparql-service-description#" xmlns:faldo="http://biohackathon.org/resource/faldo#">
+    <owl:Ontology rdf:about="http://purl.uniprot.org/uniprot/">
+        <owl:imports rdf:resource="http://purl.uniprot.org/core/"/>
+    </owl:Ontology>
+    <rdf:Description rdf:about="http://sybig.de/tfclass/test">
+        <rdf:type rdf:resource="http://purl.uniprot.org/core/Protein"/>
+        <reviewed rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</reviewed>
+        <created rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2017-08-04</created>
+        <modified rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2017-08-04</modified>
+        <version rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</version>
+        <mnemonic>Test</mnemonic>
+        <oldMnemonic>THA3_HUMAN</oldMnemonic>
+
+        <organism rdf:resource="http://purl.uniprot.org/taxonomy/9606"/>
+
+        <!--sequence rdf:resource="http://purl.uniprot.org/isoforms/Q8WTV1-1"/>
+        <sequence rdf:resource="http://purl.uniprot.org/isoforms/Q8WTV1-3"/>
+        <sequence rdf:resource="http://purl.uniprot.org/isoforms/Q8WTV1-4"/> -->
+    </rdf:Description>
+ 
+    <rdf:Description rdf:about="http://purl.uniprot.org/isoforms/Test-1">
+        <rdf:type rdf:resource="http://purl.uniprot.org/core/Simple_Sequence"/>
+        <modified rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2017-08-04</modified>
+        <version rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</version>
+        <name>canonical</name>
+        <rdf:value>ABCDEFGHIJKLMNOPQRSTUVWXYZ</rdf:value>
+    </rdf:Description>
+    <rdf:Description rdf:about="http://purl.uniprot.org/isoforms/Test-2">
+        <rdf:type rdf:resource="http://purl.uniprot.org/core/Modified_Sequence"/>
+        <name>iso 1</name>
+        <basedOn rdf:resource="http://purl.uniprot.org/isoforms/Test-1"/>
+        <rdf:value>ABCD12345JKLMNOPQRSTUVWXYZ</rdf:value>
+        <modification rdf:resource="http://purl.uniprot.org/annotation/VSP_000001"/>
+    </rdf:Description>
+
+    <rdf:Description rdf:about="http://purl.uniprot.org/annotation/VSP_000001">
+        <rdf:type rdf:resource="http://purl.uniprot.org/core/Alternative_Sequence_Annotation"/>
+        <rdfs:comment>In isoform 1.</rdfs:comment>
+        <substitution>12345</substitution>
+        <range rdf:resource="http://purl.uniprot.org/range/12345tt5tt10"/>
+    </rdf:Description>
+    <rdf:Description rdf:about="http://purl.uniprot.org/range/12345tt5tt10">
+        <rdf:type rdf:resource="http://biohackathon.org/resource/faldo#Region"/>
+        <faldo:begin rdf:resource="http://purl.uniprot.org/position/12345tt5"/>
+        <faldo:end rdf:resource="http://purl.uniprot.org/position/12345tt10"/>
+    </rdf:Description>
+    <rdf:Description rdf:about="http://purl.uniprot.org/position/12345tt5">
+        <rdf:type rdf:resource="http://biohackathon.org/resource/faldo#Position"/>
+        <rdf:type rdf:resource="http://biohackathon.org/resource/faldo#ExactPosition"/>
+        <faldo:position rdf:datatype="http://www.w3.org/2001/XMLSchema#int">5</faldo:position>
+        <faldo:reference rdf:resource="http://purl.uniprot.org/isoforms/Test-1"/>
+    </rdf:Description>
+    <rdf:Description rdf:about="http://purl.uniprot.org/position/12345tt10">
+        <rdf:type rdf:resource="http://biohackathon.org/resource/faldo#Position"/>
+        <rdf:type rdf:resource="http://biohackathon.org/resource/faldo#ExactPosition"/>
+        <faldo:position rdf:datatype="http://www.w3.org/2001/XMLSchema#int">9</faldo:position>
+        <faldo:reference rdf:resource="http://purl.uniprot.org/isoforms/Test-1"/>
+    </rdf:Description>
+    
+    
+
+</rdf:RDF>

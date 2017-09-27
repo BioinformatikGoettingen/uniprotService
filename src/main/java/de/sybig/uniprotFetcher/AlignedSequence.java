@@ -18,6 +18,7 @@ public class AlignedSequence {
     private String type = "modified";
     private List<SequenceFeature> features;
     private String sequence;
+    private int _movedStart = 0;
 
     private transient Isoform parentIsoform;
 
@@ -47,36 +48,37 @@ public class AlignedSequence {
 
     }
 
-    private void applyDeletion(Modification m, Isoform isoform) {
+    private void applyDeletion(Modification modiToApply, Isoform isoform) {
         if (!getId().equals(isoform.getId())) {
             return;
         }
         int movedStart = 0;
         for (SequenceFeature sf : features) {
-            if ("gap".equals(sf.getType()) && sf.getStart() < m.getBegin()) {
+            if ("gap".equals(sf.getType()) && sf.getStart() < modiToApply.getBegin()) {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
 
-        if (m.getSubstitution() != null && m.getSubstitution().length() > 0) {
+        if (modiToApply.getSubstitution() != null && modiToApply.getSubstitution().length() > 0) {
             SequenceFeature substitution = new SequenceFeature();
-            substitution.setStart(m.getBegin() + movedStart);
-            substitution.setEnd(m.getBegin() + movedStart + m.getSubstitution().length());
+            substitution.setStart(modiToApply.getBegin() + movedStart);
+            substitution.setEnd(modiToApply.getBegin() + movedStart + modiToApply.getSubstitution().length());
             substitution.setType("mismatch");
             addFeature(substitution);
         }
-        int sub = m.getSubstitution() == null ? 0 : m.getSubstitution().length();
-        if (m.getBegin() + sub - 1 > sequence.length()) {
+        int sub = modiToApply.getSubstitution() == null ? 0 : modiToApply.getSubstitution().length();
+        if (modiToApply.getBegin() + sub - 1 > sequence.length()) {
             return;
             //TODO add test
         }
         SequenceFeature gap = new SequenceFeature();
-        gap.setStart(m.getBegin() + movedStart + sub);
-        gap.setEnd(m.getEnd() + movedStart);
+        gap.setStart(modiToApply.getBegin() + movedStart + sub);
+        gap.setEnd(modiToApply.getEnd() + movedStart);
         gap.setType("gapD");
-        sequence = sequence.substring(0, (m.getBegin() + sub - 1))
-                + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart(), "-"))
-                + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
+        sequence = sequence.substring(0, (modiToApply.getBegin() + sub))
+                + String.join("", Collections.nCopies(gap.getLength(), "-"))
+                + sequence.substring(gap.getStart() - movedStart, sequence.length());
+        this._movedStart += gap.getLength();
         addFeature(gap);
     }
 
@@ -104,8 +106,16 @@ public class AlignedSequence {
 //        }
         checkForEndOverlapsInThisSequence(modToApply, isoform, movedStart);
 //        /// overlap in modified sequences
-        logger.trace("{} --?== {}", isoform.getId(), getId());
+        logger.trace("{} ---- {}", isoform.getId(), getId());
         if (isoform.getId().equals(getId())) {
+            int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
+            if (sub == (modToApply.getLength())) {
+                logger.trace("Substitution has the same length as modification, inserting mismatch in own sequence");
+                // mismatch of the same length
+                SequenceFeature mismatch = new SequenceFeature(modToApply, movedStart);
+                mismatch.setType("mismatch");
+                addFeature(mismatch);
+            }
             logger.trace("stopping on this sequence, its the owning one.");
             return;
         }
@@ -118,10 +128,10 @@ public class AlignedSequence {
                 gap.setEnd(movedStart + ranges[0].getEnd());
                 gap.setType("gap");
                 addFeature(gap);
-                
+
                 sequence = sequence.substring(0, (ranges[0].getBegin() - 1))
-                    + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
-                    + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
+                        + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
+                        + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
 
                 movedStart += ranges[0].getLength();
                 if (ranges[1].isValid()) {
@@ -137,31 +147,24 @@ public class AlignedSequence {
             return;
         }
         //System.out.println("inserting gap in " + modToApply);
-        logger.trace("on other sequence");
+        logger.trace("Working on the other sequence");
         int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
-        if (sub > (modToApply.getEnd() - modToApply.getBegin())) {
+        if (sub > (modToApply.getLength())) {
             SequenceFeature gap = new SequenceFeature();
-//            if (overlappingRange == null) {
-//                gap.setStart(modToApply.getBegin() + movedStart);
-//            } else {
-//                if (overlappingRange.getBegin() >= modToApply.getBegin()) {
-//                    gap.setStart(overlappingRange.getEnd() + movedStart);
-//                }else{
-//                   gap.setStart(modToApply.getBegin() + movedStart); 
-//                }
-//            }
-            int modToApplyEnd = modToApply.getEnd() + movedStart + sub;
+            int modToApplyEnd = modToApply.getEnd() + movedStart + sub - 1;
 //            int ownEnd = parentIsoform.
             gap.setStart(modToApply.getBegin() + movedStart);
             gap.setEnd(modToApplyEnd);
             gap.setType("gap");
+            if (!featureAlreadyAdded(gap)) {
             addFeature(gap);
             logger.debug("Adding feature {} to sequence {}", gap, getId());
-//            System.out.println(getId() + " :: " + (gap.getStart() - 1 - movedStart) + " to " + sequence.length());
-
-            sequence = sequence.substring(0, (modToApply.getBegin() - 1))
-                    + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
-                    + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
+            
+                sequence = sequence.substring(0, (modToApply.getBegin() - 1))
+                        + String.join("", Collections.nCopies(gap.getLength(), "-"))
+                        + sequence.substring(gap.getStart() - movedStart - 1, sequence.length());
+                this._movedStart += gap.getLength();
+            }
 
         }
     }
@@ -389,6 +392,16 @@ public class AlignedSequence {
             features = new ArrayList<>();
         }
         features.add(feature);
+    }
+
+    private boolean featureAlreadyAdded(SequenceFeature gap) {
+        if (features == null) {
+            return false;
+        }
+        if (features.contains(gap)) {
+            return true;
+        }
+        return false;
     }
 
 }

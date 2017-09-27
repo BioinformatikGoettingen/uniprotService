@@ -219,7 +219,7 @@ public class Isoforms {
                     + "  <rect x = \"5\" y = \"%d\" width = \"%d\" height = \"20\" stroke = \"none\" fill = \"#FFCC62\"/>\n",
                     ypos, (int) (aaSize * sequence.getSequence().length())
             ));
-
+            
             for (SequenceFeature feature : sequence.getFeatures()) {
                 String color = null;
                 if ("gap".equals(feature.getType())) {
@@ -235,13 +235,13 @@ public class Isoforms {
                 if (color == null) {
                     continue;
                 }
-                String tooltip = feature.getType() + ": " + feature.getStart() + " - " + feature.getEnd();
+                String tooltip = String.format("%s: %d - %d (%d)", feature.getType(), feature.getStart(), feature.getEnd(), feature.getLength());
                 svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
                         + "stroke = \"none\" fill = \"#%s\" "
                         + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
                         + "    onmouseout=\"HideTooltip()\" /> \n",
                         (int) (feature.getStart() * aaSize + 5),
-                        ypos + 1, (int) (aaSize * (feature.getEnd() - feature.getStart())), color,
+                        ypos + 1, (int) (aaSize * (feature.getLength())), color,
                         tooltip));
             }
             svg.append(String.format("  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"10\" fill=\"blue\">%s</text>\n</g>\n\n",
@@ -276,7 +276,7 @@ public class Isoforms {
         }
         int height = 25 * alignment.size() + 20;
         svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"%d\" stroke = \"none\" fill = \"%s\"/>\n",
-                (int)(aaSize * start), 0, (int) (aaSize * end - start), height, color));
+                (int) (aaSize * start), 0, (int) (aaSize * end - start), height, color));
 
         logger.debug("   found at " + start + " --- " + end);
         return svg;
@@ -435,13 +435,13 @@ public class Isoforms {
         }
 
         FileTime validTime = FileTime.fromMillis(System.currentTimeMillis() - (1000 * 60 * 60 * 24 * new Long(90)));
-        
+
         if (Files.readAttributes(localFile, BasicFileAttributes.class).lastModifiedTime().compareTo(validTime) < 1) {
             logger.info("File {} is to old, will be refetched from uniprot.", localFile);
-            try{ 
-            FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
-                    getLocalFile(id).toFile(), 1500, 10 * 1000); // 1.5 seconds connectionTimeout and 10 seconds readTimeout
-            }catch(java.net.SocketTimeoutException ex){
+            try {
+                FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
+                        getLocalFile(id).toFile(), 1500, 10 * 1000); // 1.5 seconds connectionTimeout and 10 seconds readTimeout
+            } catch (java.net.SocketTimeoutException ex) {
                 logger.warn("Could not re-fetch {} from Uniprot in max 1.5 secs, using old file.");
             }
             return localFile;

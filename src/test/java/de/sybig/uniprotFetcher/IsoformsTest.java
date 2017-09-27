@@ -55,6 +55,8 @@ public class IsoformsTest {
         assertEquals(2, iso1.getFeatures().size());
         assertEquals(1, iso2.getFeatures().size());
         assertEquals(1, iso3.getFeatures().size());
+        assertEquals("ABCD-----EFGHIJKLMNOPQRSTUVWXYZ", iso1.getSequence());
+        assertEquals("ABCD12345EFGHIJKLMNOPQRSTUVWXYZ", iso2.getSequence());
 
     }
 
@@ -66,12 +68,24 @@ public class IsoformsTest {
         assertEquals(iso1.getSequence().length(), iso2.getSequence().length());
         assertEquals(1, iso1.getFeatures().size());
         assertEquals(2, iso2.getFeatures().size());
+        assertEquals("ABCDE-----KLMNOPQRSTUVWXYZ", iso2.getSequence());
 
     }
-    
+
+    @Test
+    public void mismatchWithSameLength() throws Exception {
+        List<AlignedSequence> result = instance.getAlignmentPos("testSameLengthMismatch");
+        AlignedSequence iso1 = result.get(0);
+        AlignedSequence iso2 = result.get(1);
+        assertEquals(iso1.getSequence().length(), iso2.getSequence().length());
+        assertEquals(1, iso1.getFeatures().size()); // only the orig sequence, no modifications
+        assertEquals(2, iso2.getFeatures().size());
+        assertEquals("mismatch", iso2.getFeatures().get(1).getType());
+    }
+
     @Test
     public void smallerOtherReplacment() throws Exception {
-          List<AlignedSequence> result = instance.getAlignmentPos("testSmallerOtherReplacement");
+        List<AlignedSequence> result = instance.getAlignmentPos("testSmallerOtherReplacement");
         AlignedSequence iso1 = result.get(0);
         AlignedSequence iso2 = result.get(1);
     }
