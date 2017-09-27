@@ -1,6 +1,5 @@
 package de.sybig.uniprotFetcher;
 
-import de.sybig.uniprotFetcher.Isoforms.Isoform;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -92,18 +91,10 @@ public class AlignedSequence {
         }
         logger.trace("moved start is: {}", movedStart);
 
-//        if (insertMismatchInOwningSequence(modToApply, isoform, movedStart)) {
-//
-//            return;
-//        }
         if (checkForSameModificationInCanocicalSequence(modToApply, isoform, movedStart)) {
             return;
         }
-        /// search overlapping gaps in canonical sequence
 
-//        if (checkForSameModificationInThisSequence(modToApply, isoform, movedStart)) {
-////            return;
-//        }
         checkForEndOverlapsInThisSequence(modToApply, isoform, movedStart);
 //        /// overlap in modified sequences
         logger.trace("{} ---- {}", isoform.getId(), getId());
@@ -132,7 +123,8 @@ public class AlignedSequence {
                 sequence = sequence.substring(0, (ranges[0].getBegin() - 1))
                         + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
                         + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
-
+                _movedStart += gap.getLength();
+                
                 movedStart += ranges[0].getLength();
                 if (ranges[1].isValid()) {
                     SequenceFeature mismatch = new SequenceFeature();
@@ -152,7 +144,6 @@ public class AlignedSequence {
         if (sub > (modToApply.getLength())) {
             SequenceFeature gap = new SequenceFeature();
             int modToApplyEnd = modToApply.getEnd() + movedStart + sub - 1;
-//            int ownEnd = parentIsoform.
             gap.setStart(modToApply.getBegin() + movedStart);
             gap.setEnd(modToApplyEnd);
             gap.setType("gap");
@@ -202,15 +193,6 @@ public class AlignedSequence {
             ranges[0] = getLeftOverlap(m, modToApply);
             ranges[1] = getOverlappingRegion(m, modToApply);
             ranges[2] = getRightOverlap(m, modToApply);
-//            if (overlap.isValid()) {
-//                SequenceFeature feature = new SequenceFeature();
-//                feature.setType("mismatch");
-//                feature.setStart(overlap.getBegin());
-//                feature.setEnd(overlap.getEnd());
-//                addFeature(feature);
-//                System.out.println("adding feature " + feature + " in sequence " + this.getId());
-//                return overlap;
-//            }
         }
         return ranges;
     }
@@ -387,7 +369,7 @@ public class AlignedSequence {
         this.features = features;
     }
 
-    public void addFeature(SequenceFeature feature) {
+    private final void addFeature(SequenceFeature feature) {
         if (features == null) {
             features = new ArrayList<>();
         }
