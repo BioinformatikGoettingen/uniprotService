@@ -89,4 +89,16 @@ public class IsoformsTest {
         AlignedSequence iso1 = result.get(0);
         AlignedSequence iso2 = result.get(1);
     }
+    
+    @Test
+    public void smallerMismatch() throws Exception {
+        List<AlignedSequence> result = instance.getAlignmentPos("smallerMismatch");
+        AlignedSequence iso1 = result.get(0);
+        AlignedSequence iso2 = result.get(1);
+        assertEquals(iso1.getSequence().length(), iso2.getSequence().length());
+        assertEquals(1, iso1.getFeatures().size());
+        assertEquals(3, iso2.getFeatures().size());
+        assertEquals("mismatch", iso2.getFeatures().get(1).getType());
+                assertEquals("gapD", iso2.getFeatures().get(2).getType());
+    }
 }

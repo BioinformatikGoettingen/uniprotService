@@ -11,6 +11,7 @@ public class SequenceFeature {
     int start;
     int end;
     String type;
+    private int movedStart =0;
 
     public SequenceFeature() {
         super();
@@ -50,6 +51,14 @@ public class SequenceFeature {
         this.type = type;
     }
 
+    public void setMovedStart(int movedStart) {
+        this.movedStart = movedStart;
+    }
+
+    public int getMovedStart(){
+        return movedStart;
+    }
+    
     @Override
     public String toString() {
         return String.format("%s from %d to %d", type, start, end);
@@ -87,6 +96,5 @@ public class SequenceFeature {
         }
         return true;
     }
-    
-    
+
 }

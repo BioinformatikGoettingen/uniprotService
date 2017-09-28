@@ -37,6 +37,7 @@ public class AlignedSequence {
      * @param isoform The isoform with the modification.
      */
     public void applyModification(Modification m, Isoform isoform) {
+        
         if ((m.getEnd() - m.getBegin()) > m.getSubstitution().length()) {
             logger.trace("Treating modification as deletion");
             applyDeletion(m, isoform);
@@ -61,7 +62,7 @@ public class AlignedSequence {
         if (modiToApply.getSubstitution() != null && modiToApply.getSubstitution().length() > 0) {
             SequenceFeature substitution = new SequenceFeature();
             substitution.setStart(modiToApply.getBegin() + movedStart);
-            substitution.setEnd(modiToApply.getBegin() + movedStart + modiToApply.getSubstitution().length());
+            substitution.setEnd(modiToApply.getBegin() + movedStart + modiToApply.getSubstitution().length()-1);
             substitution.setType("mismatch");
             addFeature(substitution);
         }
@@ -85,7 +86,7 @@ public class AlignedSequence {
 
         int movedStart = 0;
         for (SequenceFeature sf : features) {
-            if ("gap".equals(sf.getType()) && sf.getStart() < modToApply.getBegin()) {
+            if (sf.getType()!= null && sf.getType().startsWith("gap") && sf.getStart() < modToApply.getBegin()) {
                 movedStart = movedStart + sf.getEnd() - sf.getStart();
             }
         }
@@ -99,12 +100,16 @@ public class AlignedSequence {
 //        /// overlap in modified sequences
         logger.trace("{} ---- {}", isoform.getId(), getId());
         if (isoform.getId().equals(getId())) {
+            logger.trace("working on own sequence");
             int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
-            if (sub == (modToApply.getLength())) {
-                logger.trace("Substitution has the same length as modification, inserting mismatch in own sequence");
+            if (sub <= (modToApply.getSubstitution().length())) {
+                logger.trace("Substitution is smaller or equal to the length of the  modification, inserting mismatch in own sequence");
                 // mismatch of the same length
-                SequenceFeature mismatch = new SequenceFeature(modToApply, movedStart);
+                SequenceFeature mismatch = new SequenceFeature();
+                mismatch.setStart(modToApply.getBegin() + movedStart);
+                mismatch.setEnd(modToApply.getBegin() + movedStart + modToApply.getSubstitution().length()-1);;
                 mismatch.setType("mismatch");
+                mismatch.setMovedStart(movedStart);
                 addFeature(mismatch);
             }
             logger.trace("stopping on this sequence, its the owning one.");

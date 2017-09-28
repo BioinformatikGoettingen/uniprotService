@@ -197,7 +197,7 @@ public class Isoforms {
                 + "  }\n"
                 + "function ShowTooltip(evt, mouseovertext)\n"
                 + "{\n"
-                + "  tooltip.setAttributeNS(null,\"x\",evt.clientX+11);\n"
+                + "  tooltip.setAttributeNS(null,\"x\",11);\n"
                 + "  tooltip.setAttributeNS(null,\"y\",evt.clientY+27);\n"
                 + "  tooltip.firstChild.data = mouseovertext;\n"
                 + "  tooltip.setAttributeNS(null,\"visibility\",\"visible\");\n"
@@ -235,7 +235,8 @@ public class Isoforms {
                 if (color == null) {
                     continue;
                 }
-                String tooltip = String.format("%s: %d - %d (%d)", feature.getType(), feature.getStart(), feature.getEnd(), feature.getLength());
+                String tooltip = String.format("%s: %d - %d (%d)", feature.getType(), feature.getStart()-feature.getMovedStart(), 
+                        feature.getEnd() - feature.getMovedStart(), feature.getLength());
                 svg.append(String.format("  <rect x = \"%d\" y = \"%d\" width = \"%d\" height = \"18\" "
                         + "stroke = \"none\" fill = \"#%s\" "
                         + "onmousemove=\"ShowTooltip(evt, '%s')\"\n"
