@@ -78,7 +78,7 @@ public class Isoforms {
             for (Modification m : isoform.getModifications()) {
                 for (AlignedSequence as : sequences) {
                     logger.trace("Applying modification '{}' to sequence {}", m, as.getId());
-                    as.applyModification(m, isoform);  // the current modification and the parent isoform
+                    as.applyModification(m, isoform, sequences);  // the current modification and the parent isoform
                 }
 //                break;
             }
@@ -361,7 +361,10 @@ public class Isoforms {
             String name = child.getNodeName();
             if ("rdf:value".equals(name)) {
                 isoform.setSequence(child.getTextContent());
-            } else if ("name".equals(name)) {
+            } else if ("basedOn".equals(name)){
+                isoform.setBasedOn(child.getAttributes().getNamedItem("rdf:resource").getNodeValue().replace("http://purl.uniprot.org/isoforms/", ""));
+            } 
+            else if ("name".equals(name)) {
                 isoform.addName(child.getTextContent());
             } else if ("modification".equals(name)) {
                 isoform.addModification(getModificationNode(child.getAttributes().getNamedItem("rdf:resource").getNodeValue(), doc));
