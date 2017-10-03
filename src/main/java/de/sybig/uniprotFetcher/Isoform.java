@@ -71,7 +71,6 @@ public class Isoform {
     }
 
     public void setBasedOn(String basedOn) {
-        System.out.println("based on " + basedOn);
         this.basedOn = basedOn;
     }
 

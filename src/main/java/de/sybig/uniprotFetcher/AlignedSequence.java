@@ -53,17 +53,18 @@ public class AlignedSequence {
         if (!getId().equals(isoform.getId())) {
             return;
         }
-        int movedStart = 0;
-        for (SequenceFeature sf : features) {
-            if ("gap".equals(sf.getType()) && sf.getStart() < modiToApply.getBegin()) {
-                movedStart = movedStart + sf.getEnd() - sf.getStart();
-            }
-        }
+//        int movedStart = 0;
+//        for (SequenceFeature sf : features) {
+//            if ("gap".equals(sf.getType()) && sf.getStart() < modiToApply.getBegin()) {
+//                movedStart = movedStart + sf.getEnd() - sf.getStart();
+//            }
+//        }
+        int movedStart = this.getMovedStartOfUnderlayingSequence(modiToApply.getBegin());
 
         if (modiToApply.getSubstitution() != null && modiToApply.getSubstitution().length() > 0) {
             SequenceFeature substitution = new SequenceFeature();
             substitution.setStart(modiToApply.getBegin() + movedStart);
-            substitution.setEnd(modiToApply.getBegin() + movedStart + modiToApply.getSubstitution().length()-1);
+            substitution.setEnd(modiToApply.getBegin() + movedStart + modiToApply.getSubstitution().length() - 1);
             substitution.setMovedStart(movedStart);
             substitution.setType("mismatch");
             addFeature(substitution);
@@ -87,12 +88,13 @@ public class AlignedSequence {
 
     private void applyInsertion(Modification modToApply, Isoform isoform) {
 
-        int movedStart = 0;
-        for (SequenceFeature sf : features) {
-            if (sf.getType()!= null && sf.getType().startsWith("gap") && sf.getStart() < modToApply.getBegin()) {
-                movedStart = movedStart + sf.getEnd() - sf.getStart();
-            }
-        }
+//        int movedStart = 0;
+//        for (SequenceFeature sf : features) {
+//            if (sf.getType() != null && sf.getType().startsWith("gap") && sf.getStart() < modToApply.getBegin()) {
+//                movedStart = movedStart + sf.getEnd() - sf.getStart();
+//            }
+//        }
+        int movedStart = this.getMovedStartOfUnderlayingSequence(modToApply.getBegin());
         logger.trace("moved start is: {}", movedStart);
 
         if (checkForSameModificationInCanocicalSequence(modToApply, isoform, movedStart)) {
@@ -105,13 +107,13 @@ public class AlignedSequence {
         if (isoform.getId().equals(getId())) {
             logger.trace("working on own sequence");
             int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
-           
+
             if (sub <= (modToApply.getSubstitution().length())) {
                 logger.trace("Substitution is smaller or equal to the length of the  modification, inserting mismatch in own sequence");
                 // mismatch of the same length
                 SequenceFeature mismatch = new SequenceFeature();
                 mismatch.setStart(modToApply.getBegin() + movedStart);
-                mismatch.setEnd(modToApply.getBegin() + movedStart + modToApply.getSubstitution().length()-1);;
+                mismatch.setEnd(modToApply.getBegin() + movedStart + modToApply.getSubstitution().length() - 1);;
                 mismatch.setType("mismatch");
                 mismatch.setMovedStart(movedStart);
                 addFeature(mismatch);
@@ -121,10 +123,10 @@ public class AlignedSequence {
         }
         logger.trace("working on other sequence");
         int sub = modToApply.getSubstitution() == null ? 0 : modToApply.getSubstitution().length();
-         if ((modToApply.getEnd() - modToApply.getBegin() +1 ) == sub){
-                logger.trace("simple mismatch, we process it only on the owning sequence");
-                return;
-            }
+        if ((modToApply.getEnd() - modToApply.getBegin() + 1) == sub) {
+            logger.trace("simple mismatch, we process it only on the owning sequence");
+            return;
+        }
         Range[] ranges = overlappingModiInThisSequence(modToApply);
 
         if (ranges != null) {
@@ -140,7 +142,7 @@ public class AlignedSequence {
                         + String.join("", Collections.nCopies(gap.getEnd() - gap.getStart() - 1, "-"))
                         + sequence.substring(gap.getStart() - 1 - movedStart, sequence.length());
                 _movedStart += gap.getLength();
-                
+
                 movedStart += ranges[0].getLength();
                 if (ranges[1].isValid()) {
                     SequenceFeature mismatch = new SequenceFeature();
@@ -166,9 +168,9 @@ public class AlignedSequence {
             gap.setType("gap");
             gap.setMovedStart(movedStart);
             if (!featureAlreadyAdded(gap)) {
-            addFeature(gap);
-            logger.debug("Adding feature {} to sequence {}", gap, getId());
-            
+                addFeature(gap);
+                logger.debug("Adding feature {} to sequence {}", gap, getId());
+
                 sequence = sequence.substring(0, (modToApply.getBegin() - 1))
                         + String.join("", Collections.nCopies(gap.getLength(), "-"))
                         + sequence.substring(gap.getStart() - movedStart - 1, sequence.length());
@@ -356,22 +358,24 @@ public class AlignedSequence {
         return false;
     }
 
-    public int getMovedStartOfUnderlayingSequence(int targetPos){
+    public int getMovedStartOfUnderlayingSequence(int targetPos) {
         String basedOn = parentIsoform.getBasedOn();
-        String basedOnSequence = null;
+           if (basedOn == null){return 0;}
+        String underlayingSequence = null;
         int movedStart = 0;
-        for (AlignedSequence as: allAlignedSequences){
-           if (basedOn.equals(as.getParentIsoform().getId())){
-               basedOnSequence = as.getSequence();
-           }
+     
+        for (AlignedSequence as : allAlignedSequences) {
+            if (basedOn.equals(as.getParentIsoform().getId())) {
+                underlayingSequence = as.getSequence();
+            }
         }
         int pos = 0;
-        for (int i = 0; i < basedOnSequence.length(); i++){
-            if (basedOnSequence.substring(i).equals("-")){
+        for (int i = 0; i < underlayingSequence.length(); i++) {
+            if (underlayingSequence.substring(i).equals("-")) {
                 movedStart++;
-            }else{
+            } else {
                 pos++;
-                if (pos >= targetPos){
+                if (pos >= targetPos) {
                     return movedStart;
                 }
             }
@@ -382,7 +386,7 @@ public class AlignedSequence {
     public Isoform getParentIsoform() {
         return parentIsoform;
     }
-    
+
     public String getType() {
         return type;
     }
