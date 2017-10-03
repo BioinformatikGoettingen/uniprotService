@@ -88,16 +88,11 @@ public class AlignedSequence {
 
     private void applyInsertion(Modification modToApply, Isoform isoform) {
 
-//        int movedStart = 0;
-//        for (SequenceFeature sf : features) {
-//            if (sf.getType() != null && sf.getType().startsWith("gap") && sf.getStart() < modToApply.getBegin()) {
-//                movedStart = movedStart + sf.getEnd() - sf.getStart();
-//            }
-//        }
         int movedStart = this.getMovedStartOfUnderlayingSequence(modToApply.getBegin());
         logger.trace("moved start is: {}", movedStart);
 
         if (checkForSameModificationInCanocicalSequence(modToApply, isoform, movedStart)) {
+            logger.trace("found same modification in canocical sequence");
             return;
         }
 
@@ -300,8 +295,8 @@ public class AlignedSequence {
         for (SequenceFeature sf : features) {  //TODO consider moved start
 
             if (sf.getType() != null && sf.getType().startsWith("gap")
-                    && (modToApply.getBegin() >= (sf.getStart()))
-                    && ((modToApply.getBegin() + modToApply.getSubstitution().length()) <= (sf.getEnd()))) {
+                    && (modToApply.getBegin() == (sf.getStart()))
+                    && ((modToApply.getBegin() + modToApply.getSubstitution().length()) == (sf.getEnd()))) {
                 return true;
             }
             // ToDo overalap at start
@@ -360,10 +355,12 @@ public class AlignedSequence {
 
     public int getMovedStartOfUnderlayingSequence(int targetPos) {
         String basedOn = parentIsoform.getBasedOn();
-           if (basedOn == null){return 0;}
+        if (basedOn == null) {
+            return 0;
+        }
         String underlayingSequence = null;
         int movedStart = 0;
-     
+
         for (AlignedSequence as : allAlignedSequences) {
             if (basedOn.equals(as.getParentIsoform().getId())) {
                 underlayingSequence = as.getSequence();

@@ -45,6 +45,7 @@ public class Isoforms {
 
     private static final Logger logger = LoggerFactory.getLogger(Isoforms.class);
     private final UniProtConfiguration configuration;
+    private static final int SVG_LINE_HEIGHT = 25;
 //    private Document document;
 
     Isoforms(UniProtConfiguration configuration) {
@@ -99,7 +100,7 @@ public class Isoforms {
         List<AlignedSequence> alignment = getAlignmentPos(uniprotID);
 
         StringBuilder svg = new StringBuilder();
-        svg = addSVGStart(svg, width);
+        svg = addSVGStart(svg, width, alignment.size());
         addDBD(svg, sequence, alignment, width, validateColor("#" + color));
         svg = addAlignmentsToSVG(svg, alignment, width);
         svg = addSVGEnd(svg);
@@ -127,7 +128,7 @@ public class Isoforms {
 
 //        System.out.println("aa size " + aaSize);
         StringBuilder svg = new StringBuilder();
-        svg = addSVGStart(svg, width);
+        svg = addSVGStart(svg, width, alignment.size());
         svg = addAlignmentsToSVG(svg, alignment, width);
         svg = addSVGEnd(svg);
         return svg.toString();
@@ -183,8 +184,8 @@ public class Isoforms {
 
     }
 
-    private StringBuilder addSVGStart(StringBuilder svg, int width) {
-        svg.append(String.format("<svg width=\"%d\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" onload=\"init(evt)\">\n", width));
+    private StringBuilder addSVGStart(StringBuilder svg, int width, int lines) {
+        svg.append(String.format("<svg width=\"%d\" height=\"%d\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" onload=\"init(evt)\">\n", width, (lines * SVG_LINE_HEIGHT +30) ));
         svg.append("<script type=\"text/ecmascript\">\n"
                 + "<![CDATA[\n"
                 + "  function init(evt)\n"
@@ -247,7 +248,7 @@ public class Isoforms {
             }
             svg.append(String.format("  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"10\" fill=\"blue\">%s</text>\n</g>\n\n",
                     width - 60, ypos + 15, sequence.getId()));
-            ypos += 25;
+            ypos += SVG_LINE_HEIGHT;
         }
         return svg;
 
