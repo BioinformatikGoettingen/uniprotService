@@ -166,10 +166,16 @@ public class AlignedSequence {
                 addFeature(gap);
                 logger.debug("Adding feature {} to sequence {}", gap, getId());
 
+               
+                if (sequence.length() < modToApply.getBegin()){
+                    sequence = String.join("", Collections.nCopies(modToApply.getBegin() - sequence.length(), "*"))
+                            + sequence;
+                }
                 sequence = sequence.substring(0, (modToApply.getBegin() - 1))
                         + String.join("", Collections.nCopies(gap.getLength(), "-"))
                         + sequence.substring(gap.getStart() - movedStart - 1, sequence.length());
-                this._movedStart += gap.getLength();
+//                this._movedStart += gap.getLength();
+                sequence = sequence.replaceAll("\\*", "");
             }
 
         }
@@ -345,7 +351,7 @@ public class AlignedSequence {
                 gap.setEnd(modRealEnd);
                 gap.setType("gap");
                 addFeature(gap);
-                System.out.println("found overlap " + gap + " for " + getId());
+                //System.out.println("found overlap " + gap + " for " + getId());
                 return true;
 
             }
