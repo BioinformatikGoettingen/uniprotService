@@ -444,7 +444,7 @@ public class Isoforms {
         if (Files.readAttributes(localFile, BasicFileAttributes.class).lastModifiedTime().compareTo(validTime) < 1) {
             logger.info("File {} is to old, will be refetched from uniprot.", localFile);
             try {
-                FileUtils.copyURLToFile(new URL("http://www.uniprot.org/uniprot/" + id + ".rdf"),
+                FileUtils.copyURLToFile(new URL("https://www.uniprot.org/uniprot/" + id + ".rdf"),
                         getLocalFile(id).toFile(), 1500, 10 * 1000); // 1.5 seconds connectionTimeout and 10 seconds readTimeout
             } catch (java.net.SocketTimeoutException ex) {
                 logger.warn("Could not re-fetch {} from Uniprot in max 1.5 secs, using old file.");
